@@ -31,7 +31,9 @@
 
 .EXAMPLE
     .\dev.ps1 test
-    Run pytest. (Doesn't reinstall - tests run against the editable .venv.)
+    Run pytest via a uv-managed Python (sidesteps Windows App Control blocks
+    that can hit `.venv\Scripts\python.exe`). Extra args are passed through:
+    `.\dev.ps1 test tests/unit/test_foo.py -v`.
 #>
 
 [CmdletBinding()]
@@ -41,7 +43,7 @@ param(
     [string]$Command = "help",
 
     [Parameter(Position = 1, ValueFromRemainingArguments = $true)]
-    [string[]]$Args
+    [string[]]$Rest
 )
 
 $ErrorActionPreference = "Stop"
@@ -119,29 +121,33 @@ function Invoke-Reinstall {
 }
 
 function Invoke-Serve {
-    if (-not $Args -or $Args.Count -eq 0) {
+    if (-not $Rest -or $Rest.Count -eq 0) {
         throw "Usage: .\dev.ps1 serve <path-to-pbip-folder>"
     }
     Invoke-Reinstall
-    Write-Step "Starting model-lenz serve $($Args -join ' ')"
-    & $GlobalExe serve @Args
+    Write-Step "Starting model-lenz serve $($Rest -join ' ')"
+    & $GlobalExe serve @Rest
 }
 
 function Invoke-Demo {
     Invoke-Reinstall
     Write-Step "Starting model-lenz demo"
-    & $GlobalExe demo @Args
+    & $GlobalExe demo @Rest
 }
 
 function Invoke-Dev {
-    if (-not $Args -or $Args.Count -eq 0) {
+    if (-not $Rest -or $Rest.Count -eq 0) {
         throw "Usage: .\dev.ps1 dev <path-to-pbip-folder>"
     }
-    $pbip = $Args[0]
+    $pbip = $Rest[0]
     Stop-RunningServers
 
     Write-Step "Launching API terminal (Python, port 8765)"
-    $apiCmd = "& '$VenvPython' -m model_lenz.cli serve '$pbip' --port 8765 --no-browser"
+    # Same uv-run dance as Invoke-Test: sidesteps the App Control block on
+    # `.venv\Scripts\python.exe`. The `--with-editable ".[dev]"` reuses the
+    # ephemeral env that uv has already provisioned for tests, so this is fast
+    # on the second-and-later launch.
+    $apiCmd = "uv run --python 3.12 --with-editable `".[dev]`" model-lenz serve '$pbip' --port 8765 --no-browser"
     Start-Process powershell -ArgumentList "-NoExit", "-Command", $apiCmd
 
     Start-Sleep -Seconds 2
@@ -172,8 +178,13 @@ function Invoke-Dev {
 }
 
 function Invoke-Test {
-    Write-Step "Running pytest (against the editable .venv install)"
-    & $VenvPython -m pytest tests/ @Args
+    # `uv run` instead of $VenvPython for the same reason `uvx hatch` is used
+    # above: App Control on some Windows machines blocks the project-local
+    # `.venv\Scripts\python.exe` with `os error 4551`. uv with --python sources
+    # a uv-managed interpreter and --with-editable rebuilds the package on the
+    # fly, so test runs work without needing the venv shim at all.
+    Write-Step "Running pytest (via uv-managed Python)"
+    & uv run --python 3.12 --with-editable ".[dev]" pytest tests/ @Rest
 }
 
 function Invoke-Fmt {

@@ -205,6 +205,8 @@ Sales\                                      ← the PBIP root (what Power BI Des
 | `Sales`  *(the PBIP root, containing `Sales.pbip`)* | ✅      | Also works. Model Lenz locates the `.SemanticModel/` child automatically. |
 | `Sales\Sales.SemanticModel\definition`              | ✅      | The innermost folder still works.        |
 
+**Switch PBIPs without restarting.** Once the server is running, click **Open…** next to the model name in the header to point it at a different PBIP. No `Ctrl+C` and re-run — paste the path (Explorer's *Copy as path* with surrounding quotes works), hit **Open**, and the sidebar, graph, and selection state all refresh to the new model. The previously loaded model stays cached in memory, so toggling back is instant.
+
 ---
 
 ## Troubleshooting
@@ -254,6 +256,7 @@ Commands:
 | **Classification** | Heuristic fact / dim / parameter / time / calc-group / other, configurable via a `model_lenz.toml` in the PBIP root. |
 | **PBIP diff** | `model-lenz diff <base_pbip> <head_pbip>` produces a side-by-side comparison. Color-coded added / modified / removed for measures, tables, and relationships. Side-by-side DAX for modified measures. Git branch names auto-fill the BASE / HEAD labels. |
 | **Theme** | Dark (default) and light themes, both with the Power BI gold gradient as the brand accent. Theme switch lives in a labeled `Dark / Light` control next to `Hops` in the header. |
+| **Switch PBIPs in-app** | Header **Open…** button swaps the active PBIP at runtime — no server restart. Previously loaded PBIPs stay cached so toggling back is instant. |
 | **Distribution** | Single Python wheel. Install via `uv tool install model-lenz` (recommended) or `pipx install model-lenz`. Frontend bundle is included; no Node required at install time. |
 | **Read-only** | Model Lenz never modifies your PBIP files. |
 

@@ -66,7 +66,31 @@ Same graph for both sides. When the Power BI developer and the data engineer tal
 
 `model-lenz diff <base_pbip> <head_pbip>` opens a side-by-side comparison of two model snapshots. Color-coded **added** / **modified** / **removed** across every measure, table, and relationship, with the full BASE vs HEAD DAX shown for every modified measure. If either folder is inside a Git working tree, branch names auto-fill the BASE / HEAD labels — a small gold ★ pin marks the side that's on the repo's default branch (`main` or `master`). A Swap button flips BASE ↔ HEAD if you ran the CLI in the wrong order.
 
-A typical workflow: a teammate sends a PBIP folder for review. Run `model-lenz diff your_main_copy their_feature_copy`, and a browser opens to a structured diff you can read top-to-bottom before merging.
+**The catch: you need both PBIPs on disk at the same time.** Model Lenz reads files, not Git refs — and a normal `git checkout` only ever materializes one branch at a time. So if you're on a feature branch and want to diff against `main`, you need a second folder somewhere containing `main`'s state.
+
+The cleanest way to get one is **`git worktree`**. It asks Git to check out a second branch into a sibling folder, sharing your repo's `.git` data — no extra clone, no disturbing your current checkout:
+
+```powershell
+# From your feature-branch checkout
+cd D:\my_pbip_repo
+git worktree add ..\my_pbip_repo-main main
+
+# BASE = main worktree, HEAD = current branch
+model-lenz diff ..\my_pbip_repo-main\import_contoso_sales.SemanticModel `
+                .\import_contoso_sales.SemanticModel
+
+# When you're done
+git worktree remove ..\my_pbip_repo-main
+```
+
+The diff header will read `BASE  main ★` on the left and `HEAD  <your-branch>` on the right, and a browser opens to `/diff`.
+
+Other ways to land two folders side-by-side:
+
+- A teammate sends a copy of their PBIP for review — point BASE at your local copy, HEAD at theirs.
+- Two separate clones of the same repo, one branch per clone. Heavier than a worktree but works the same.
+
+> A future `model-lenz diff --git origin/main HEAD` mode will skip the worktree step by resolving Git refs directly. See [roadmap](#roadmap).
 
 ---
 

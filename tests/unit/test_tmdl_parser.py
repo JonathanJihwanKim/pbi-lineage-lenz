@@ -231,3 +231,107 @@ def test_multiple_top_level_blocks():
     blocks, _ = parse(src)
     names = [b.name for b in blocks if b.keyword == "expression"]
     assert names == ["_BillingProject", "q1"]
+
+
+# --------------------------------------------------------------------------- #
+# `///` doc-comments
+# --------------------------------------------------------------------------- #
+
+
+def test_triple_slash_attaches_to_following_measure():
+    src = _norm(
+        """
+        table 'Sales'
+            /// Counts the number of unique orders.
+            measure 'Number of Orders' = DISTINCTCOUNT(sales[OrderKey])
+                formatString: #,0
+        """
+    )
+    blocks, warns = parse(src)
+    assert warns == []
+    table = blocks[0]
+    measure = table.children[0]
+    assert measure.keyword == "measure"
+    assert measure.description == "Counts the number of unique orders."
+
+
+def test_triple_slash_multi_line_joins_with_newline():
+    src = _norm(
+        """
+        table 'Sales'
+            /// First line.
+            /// Second line.
+            measure 'X' = 1
+        """
+    )
+    blocks, warns = parse(src)
+    assert warns == []
+    measure = blocks[0].children[0]
+    assert measure.description == "First line.\nSecond line."
+
+
+def test_triple_slash_blank_line_between_doc_and_block_is_tolerated():
+    src = _norm(
+        """
+        table 'Sales'
+            /// Documented.
+
+            measure 'X' = 1
+        """
+    )
+    blocks, warns = parse(src)
+    assert warns == []
+    assert blocks[0].children[0].description == "Documented."
+
+
+def test_triple_slash_on_table_and_column():
+    src = _norm(
+        """
+        /// Table description.
+        table 'Sales'
+            /// Column description.
+            column Quantity
+                dataType: int64
+        """
+    )
+    blocks, warns = parse(src)
+    assert warns == []
+    table = blocks[0]
+    assert table.description == "Table description."
+    column = table.children[0]
+    assert column.description == "Column description."
+
+
+def test_triple_slash_orphan_at_eof_emits_warning():
+    src = _norm(
+        """
+        table 'Sales'
+            measure 'X' = 1
+
+        /// orphan
+        """
+    )
+    _, warns = parse(src)
+    assert any("trailing doc-comment" in w for w in warns)
+
+
+def test_triple_slash_strips_one_leading_space_only():
+    src = _norm(
+        """
+        ///  Two leading spaces.
+        table 'Sales'
+        """
+    )
+    blocks, _ = parse(src)
+    assert blocks[0].description == " Two leading spaces."
+
+
+def test_triple_slash_no_space_after_slashes():
+    src = _norm(
+        """
+        ///NoSpace
+        table 'Sales'
+        """
+    )
+    blocks, _ = parse(src)
+    assert blocks[0].description == "NoSpace"

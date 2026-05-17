@@ -47,7 +47,10 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = $PSScriptRoot
 $VenvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
-$VenvHatch = Join-Path $RepoRoot ".venv\Scripts\hatch.exe"
+# `uvx hatch` instead of the venv shim — on Windows machines with Application
+# Control policies, the venv-local hatch.exe trampoline can be blocked with
+# `uv trampoline failed to spawn Python child process (os error 4551)`.
+# uvx routes through the signed top-level uv.exe and avoids that class of block.
 $WheelGlob = Join-Path $RepoRoot "dist\model_lenz-*.whl"
 $GlobalExe = Join-Path $env:USERPROFILE ".local\bin\model-lenz.exe"
 
@@ -90,7 +93,7 @@ function Invoke-Rebuild {
 
     Write-Step "Building Python wheel (hatch build)"
     Invoke-CleanDist
-    & $VenvHatch build
+    uvx hatch build
     if ($LASTEXITCODE -ne 0) { throw "hatch build failed" }
 }
 

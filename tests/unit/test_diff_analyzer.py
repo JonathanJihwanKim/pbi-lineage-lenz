@@ -345,3 +345,142 @@ def test_identical_models_emit_empty_payload():
     assert d.relationships == []
     assert d.counts.measures_added == 0
     assert d.counts.tables_modified == 0
+
+
+# --------------------------------------------------------------------------- #
+# Description / metadata-only diffs (added in 0.3.1)
+# --------------------------------------------------------------------------- #
+
+
+def test_measure_description_only_change_is_modified():
+    base_m = Measure(name="Total", table="FactSales", expression="SUM(FactSales[Amt])")
+    head_m = Measure(
+        name="Total",
+        table="FactSales",
+        expression="SUM(FactSales[Amt])",
+        description="Adds amounts across the sales fact.",
+    )
+    base = _model(tables=[Table(name="FactSales", measures=[base_m])])
+    head = _model(tables=[Table(name="FactSales", measures=[head_m])])
+    d = diff_models(base, head, base_label="m", head_label="h")
+    assert d.counts.measures_modified == 1
+    md = d.measures[0]
+    assert md.status == "modified"
+    assert md.description_changed is True
+    assert md.dax_changed is False
+    assert md.refs_changed is False
+
+
+def test_measure_description_whitespace_only_is_unchanged():
+    base_m = Measure(name="Total", table="FactSales", expression="x", description="hello")
+    head_m = Measure(name="Total", table="FactSales", expression="x", description="  hello  ")
+    base = _model(tables=[Table(name="FactSales", measures=[base_m])])
+    head = _model(tables=[Table(name="FactSales", measures=[head_m])])
+    d = diff_models(base, head, base_label="m", head_label="h")
+    assert d.measures == []
+
+
+def test_measure_display_folder_change_flagged():
+    base_m = Measure(name="Total", table="FactSales", expression="x", display_folder="A")
+    head_m = Measure(name="Total", table="FactSales", expression="x", display_folder="B")
+    base = _model(tables=[Table(name="FactSales", measures=[base_m])])
+    head = _model(tables=[Table(name="FactSales", measures=[head_m])])
+    d = diff_models(base, head, base_label="m", head_label="h")
+    assert len(d.measures) == 1
+    assert d.measures[0].display_folder_changed is True
+    assert d.measures[0].dax_changed is False
+
+
+def test_measure_format_string_change_flagged():
+    base_m = Measure(name="Total", table="FactSales", expression="x", format_string="#,0")
+    head_m = Measure(name="Total", table="FactSales", expression="x", format_string="0.00%")
+    base = _model(tables=[Table(name="FactSales", measures=[base_m])])
+    head = _model(tables=[Table(name="FactSales", measures=[head_m])])
+    d = diff_models(base, head, base_label="m", head_label="h")
+    assert d.measures[0].format_string_changed is True
+
+
+def test_measure_is_hidden_change_flagged():
+    base_m = Measure(name="Total", table="FactSales", expression="x", is_hidden=False)
+    head_m = Measure(name="Total", table="FactSales", expression="x", is_hidden=True)
+    base = _model(tables=[Table(name="FactSales", measures=[base_m])])
+    head = _model(tables=[Table(name="FactSales", measures=[head_m])])
+    d = diff_models(base, head, base_label="m", head_label="h")
+    assert d.measures[0].is_hidden_changed is True
+
+
+def test_table_description_only_change_is_modified():
+    base_t = Table(name="FactSales", description="old desc")
+    head_t = Table(name="FactSales", description="new desc")
+    d = diff_models(_model(tables=[base_t]), _model(tables=[head_t]), base_label="m", head_label="h")
+    assert d.counts.tables_modified == 1
+    td = d.tables[0]
+    assert td.status == "modified"
+    assert td.description_changed is True
+    assert td.is_hidden_changed is False
+
+
+def test_table_is_hidden_change_now_surfaces_in_diff():
+    # Regression: 0.3.0 detected this flip but never reported it.
+    base_t = Table(name="FactSales", is_hidden=False)
+    head_t = Table(name="FactSales", is_hidden=True)
+    d = diff_models(_model(tables=[base_t]), _model(tables=[head_t]), base_label="m", head_label="h")
+    assert d.counts.tables_modified == 1
+    assert d.tables[0].is_hidden_changed is True
+
+
+def test_column_description_change_surfaces_in_columns_modified():
+    base_t = Table(
+        name="FactSales",
+        columns=[Column(name="Amount", data_type="decimal", description="Sale value")],
+    )
+    head_t = Table(
+        name="FactSales",
+        columns=[Column(name="Amount", data_type="decimal", description="Sale value (USD)")],
+    )
+    d = diff_models(_model(tables=[base_t]), _model(tables=[head_t]), base_label="m", head_label="h")
+    assert d.counts.tables_modified == 1
+    td = d.tables[0]
+    assert len(td.columns_modified) == 1
+    cd = td.columns_modified[0]
+    assert cd.name == "Amount"
+    assert cd.description_changed is True
+    assert cd.data_type_changed is False
+
+
+def test_column_data_type_and_hidden_change_flagged():
+    base_t = Table(
+        name="FactSales",
+        columns=[Column(name="Amount", data_type="int64", is_hidden=False)],
+    )
+    head_t = Table(
+        name="FactSales",
+        columns=[Column(name="Amount", data_type="decimal", is_hidden=True)],
+    )
+    d = diff_models(_model(tables=[base_t]), _model(tables=[head_t]), base_label="m", head_label="h")
+    cd = d.tables[0].columns_modified[0]
+    assert cd.data_type_changed is True
+    assert cd.is_hidden_changed is True
+    assert cd.before is not None and cd.before.data_type == "int64"
+    assert cd.head is not None and cd.head.data_type == "decimal"
+
+
+def test_column_expression_change_flagged():
+    base_t = Table(
+        name="FactSales",
+        columns=[Column(name="Margin", expression="[Sales] - [Cost]")],
+    )
+    head_t = Table(
+        name="FactSales",
+        columns=[Column(name="Margin", expression="[Sales] - [Cost] - [Tax]")],
+    )
+    d = diff_models(_model(tables=[base_t]), _model(tables=[head_t]), base_label="m", head_label="h")
+    assert d.tables[0].columns_modified[0].expression_changed is True
+
+
+def test_unchanged_column_is_omitted_from_columns_modified():
+    col = Column(name="Amount", data_type="decimal", description="x")
+    base_t = Table(name="FactSales", columns=[col])
+    head_t = Table(name="FactSales", columns=[col])
+    d = diff_models(_model(tables=[base_t]), _model(tables=[head_t]), base_label="m", head_label="h")
+    assert d.tables == []

@@ -220,6 +220,22 @@ export interface MeasureDiff {
   dax_changed: boolean;
   refs_changed: boolean;
   userel_changed: boolean;
+  description_changed: boolean;
+  display_folder_changed: boolean;
+  format_string_changed: boolean;
+  is_hidden_changed: boolean;
+}
+
+export interface ColumnDiff {
+  name: string;
+  before: Column | null;
+  head: Column | null;
+  description_changed: boolean;
+  data_type_changed: boolean;
+  is_hidden_changed: boolean;
+  is_key_changed: boolean;
+  source_column_changed: boolean;
+  expression_changed: boolean;
 }
 
 export interface TableDiff {
@@ -230,8 +246,11 @@ export interface TableDiff {
   source_lineage_changed: boolean;
   columns_added: string[];
   columns_removed: string[];
+  columns_modified: ColumnDiff[];
   classification_before: string | null;
   classification_head: string | null;
+  description_changed: boolean;
+  is_hidden_changed: boolean;
 }
 
 export interface RelationshipDiff {

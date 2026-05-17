@@ -1494,6 +1494,18 @@ pre {
   border-left: 3px solid var(--diff-removed);
 }
 
+.diff-columns-modified {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.diff-row-nested {
+  padding: 6px 10px;
+  background: var(--bg-2);
+  font-size: 12px;
+}
+
 .link-back {
   color: var(--accent-strong);
   text-decoration: none;

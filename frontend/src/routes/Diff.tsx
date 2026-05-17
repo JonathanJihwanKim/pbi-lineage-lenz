@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api } from "../api/client";
 import type {
+  ColumnDiff,
   DiffPayload,
   DiffStatus,
   MeasureDiff,
@@ -275,17 +276,87 @@ function MeasureRowModified({ m }: { m: MeasureDiff }) {
         {m.dax_changed && <span className="badge mini">DAX</span>}
         {m.refs_changed && <span className="badge mini">refs</span>}
         {m.userel_changed && <span className="badge mini">USERELATIONSHIP</span>}
+        {m.description_changed && <span className="badge mini">description</span>}
+        {m.display_folder_changed && <span className="badge mini">display folder</span>}
+        {m.format_string_changed && <span className="badge mini">format</span>}
+        {m.is_hidden_changed && <span className="badge mini">hidden</span>}
       </div>
-      <div className="diff-dax-pair">
-        <div className="diff-dax-side">
-          <div className="diff-dax-label diff-dax-label-base">BASE</div>
-          <pre className="dax dax-base">{m.before?.expression ?? "(missing)"}</pre>
+      {m.dax_changed && (
+        <div className="diff-dax-pair">
+          <div className="diff-dax-side">
+            <div className="diff-dax-label diff-dax-label-base">BASE</div>
+            <pre className="dax dax-base">{m.before?.expression ?? "(missing)"}</pre>
+          </div>
+          <div className="diff-dax-side">
+            <div className="diff-dax-label diff-dax-label-head">HEAD</div>
+            <pre className="dax dax-head">{m.head?.expression ?? "(missing)"}</pre>
+          </div>
         </div>
-        <div className="diff-dax-side">
-          <div className="diff-dax-label diff-dax-label-head">HEAD</div>
-          <pre className="dax dax-head">{m.head?.expression ?? "(missing)"}</pre>
-        </div>
+      )}
+      {m.description_changed && (
+        <DescriptionPair before={m.before?.description} head={m.head?.description} />
+      )}
+      {m.display_folder_changed && (
+        <ScalarPair
+          label="Display folder"
+          before={m.before?.display_folder}
+          head={m.head?.display_folder}
+        />
+      )}
+      {m.format_string_changed && (
+        <ScalarPair
+          label="Format"
+          before={m.before?.format_string}
+          head={m.head?.format_string}
+        />
+      )}
+      {m.is_hidden_changed && (
+        <ScalarPair
+          label="Hidden"
+          before={String(m.before?.is_hidden ?? false)}
+          head={String(m.head?.is_hidden ?? false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DescriptionPair({
+  before,
+  head,
+}: {
+  before: string | null | undefined;
+  head: string | null | undefined;
+}) {
+  return (
+    <div className="diff-dax-pair">
+      <div className="diff-dax-side">
+        <div className="diff-dax-label diff-dax-label-base">DESCRIPTION (BASE)</div>
+        <pre className="dax dax-base">{before ?? "(none)"}</pre>
       </div>
+      <div className="diff-dax-side">
+        <div className="diff-dax-label diff-dax-label-head">DESCRIPTION (HEAD)</div>
+        <pre className="dax dax-head">{head ?? "(none)"}</pre>
+      </div>
+    </div>
+  );
+}
+
+function ScalarPair({
+  label,
+  before,
+  head,
+}: {
+  label: string;
+  before: string | null | undefined;
+  head: string | null | undefined;
+}) {
+  return (
+    <div className="diff-row-detail">
+      <span className="muted">{label}: </span>
+      <span className="mono">
+        {before ?? "(none)"} → {head ?? "(none)"}
+      </span>
     </div>
   );
 }
@@ -374,6 +445,8 @@ function TableRowModified({ t }: { t: TableDiff }) {
           </span>
         )}
         {t.source_lineage_changed && <span className="badge mini">source changed</span>}
+        {t.description_changed && <span className="badge mini">description</span>}
+        {t.is_hidden_changed && <span className="badge mini">hidden</span>}
       </div>
       {t.columns_added.length > 0 && (
         <div className="diff-row-detail">
@@ -393,6 +466,81 @@ function TableRowModified({ t }: { t: TableDiff }) {
           <span className="mono">
             {sourceLabel(t.before)} → {sourceLabel(t.head)}
           </span>
+        </div>
+      )}
+      {t.description_changed && (
+        <DescriptionPair before={t.before?.description} head={t.head?.description} />
+      )}
+      {t.is_hidden_changed && (
+        <ScalarPair
+          label="Hidden"
+          before={String(t.before?.is_hidden ?? false)}
+          head={String(t.head?.is_hidden ?? false)}
+        />
+      )}
+      {t.columns_modified.length > 0 && (
+        <div className="diff-columns-modified">
+          <div className="diff-row-detail">
+            <span className="muted">{t.columns_modified.length} column(s) modified:</span>
+          </div>
+          {t.columns_modified.map((c) => (
+            <ColumnDiffRow key={c.name} c={c} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ColumnDiffRow({ c }: { c: ColumnDiff }) {
+  return (
+    <div className="diff-row diff-row-modified diff-row-nested">
+      <div className="diff-row-head">
+        <span className="mono">{c.name}</span>
+        {c.description_changed && <span className="badge mini">description</span>}
+        {c.data_type_changed && <span className="badge mini">data type</span>}
+        {c.is_hidden_changed && <span className="badge mini">hidden</span>}
+        {c.is_key_changed && <span className="badge mini">key</span>}
+        {c.source_column_changed && <span className="badge mini">source column</span>}
+        {c.expression_changed && <span className="badge mini">DAX</span>}
+      </div>
+      {c.data_type_changed && (
+        <ScalarPair label="Data type" before={c.before?.data_type} head={c.head?.data_type} />
+      )}
+      {c.source_column_changed && (
+        <ScalarPair
+          label="Source column"
+          before={c.before?.source_column}
+          head={c.head?.source_column}
+        />
+      )}
+      {c.is_hidden_changed && (
+        <ScalarPair
+          label="Hidden"
+          before={String(c.before?.is_hidden ?? false)}
+          head={String(c.head?.is_hidden ?? false)}
+        />
+      )}
+      {c.is_key_changed && (
+        <ScalarPair
+          label="Key"
+          before={String(c.before?.is_key ?? false)}
+          head={String(c.head?.is_key ?? false)}
+        />
+      )}
+      {c.description_changed && (
+        <DescriptionPair before={c.before?.description} head={c.head?.description} />
+      )}
+      {c.expression_changed && (
+        <div className="diff-dax-pair">
+          <div className="diff-dax-side">
+            <div className="diff-dax-label diff-dax-label-base">BASE</div>
+            <pre className="dax dax-base">{c.before?.expression ?? "(none)"}</pre>
+          </div>
+          <div className="diff-dax-side">
+            <div className="diff-dax-label diff-dax-label-head">HEAD</div>
+            <pre className="dax dax-head">{c.head?.expression ?? "(none)"}</pre>
+          </div>
         </div>
       )}
     </div>
@@ -540,6 +688,11 @@ function swapPayload(d: DiffPayload): DiffPayload {
       head: t.before,
       columns_added: t.columns_removed,
       columns_removed: t.columns_added,
+      columns_modified: t.columns_modified.map((c) => ({
+        ...c,
+        before: c.head,
+        head: c.before,
+      })),
       classification_before: t.classification_head,
       classification_head: t.classification_before,
     })),

@@ -75,6 +75,8 @@ class TmdlBlock:
     name: str = ""
     inline_value: str | None = None
     expression: str = ""
+    description: str | None = None
+    """Doc-comment text collected from `///` lines immediately above the block."""
     properties: dict[str, str] = field(default_factory=dict)
     flags: set[str] = field(default_factory=set)
     annotations: dict[str, str] = field(default_factory=dict)
@@ -134,6 +136,14 @@ def _unquote(name: str) -> str:
     return name
 
 
+def _strip_doc_marker(content: str) -> str:
+    """Strip the leading `///` (and one optional space) from a TMDL doc-comment line."""
+    body = content[3:]
+    if body.startswith(" "):
+        body = body[1:]
+    return body.rstrip()
+
+
 class _Parser:
     def __init__(self, content: str) -> None:
         self.lines = content.splitlines()
@@ -159,6 +169,7 @@ class _Parser:
 
     def _parse_blocks(self, min_indent: int) -> list[TmdlBlock]:
         blocks: list[TmdlBlock] = []
+        pending_doc: list[str] = []
         while True:
             peeked = self._peek_indent()
             if peeked is None:
@@ -172,16 +183,34 @@ class _Parser:
                 self.i += 1
                 continue
 
+            if content.startswith("///"):
+                pending_doc.append(_strip_doc_marker(content))
+                self.i += 1
+                continue
+
             # Decide whether this line starts a block or is an annotation/changedProperty.
             head_keyword = content.split(None, 1)[0]
             if head_keyword in BLOCK_KEYWORDS:
-                blocks.append(self._parse_block(indent))
+                block = self._parse_block(indent)
+                if pending_doc:
+                    block.description = "\n".join(pending_doc)
+                    pending_doc = []
+                blocks.append(block)
             else:
+                if pending_doc:
+                    self.warnings.append(
+                        f"doc-comment(s) preceded a non-block line and were dropped: {pending_doc!r}"
+                    )
+                    pending_doc = []
                 # Top-level annotations / changedProperty / stray properties.
                 # Wrap into a synthetic "stray" block so callers don't lose them.
                 stray = TmdlBlock(keyword="<stray>")
                 self._consume_property_line(stray, content)
                 blocks.append(stray)
+        if pending_doc:
+            self.warnings.append(
+                f"trailing doc-comment(s) with no following block: {pending_doc!r}"
+            )
         return blocks
 
     def _parse_block(self, indent: int) -> TmdlBlock:
@@ -216,6 +245,7 @@ class _Parser:
             )
 
         # 2. Consume children + properties at exactly `child_indent`.
+        pending_doc: list[str] = []
         while True:
             peeked = self._peek_indent()
             if peeked is None:
@@ -232,11 +262,29 @@ class _Parser:
                 self.i += 1
                 continue
 
+            if content.startswith("///"):
+                pending_doc.append(_strip_doc_marker(content))
+                self.i += 1
+                continue
+
             head_keyword = content.split(None, 1)[0]
             if head_keyword in BLOCK_KEYWORDS:
-                block.children.append(self._parse_block(child_indent))
+                child = self._parse_block(child_indent)
+                if pending_doc:
+                    child.description = "\n".join(pending_doc)
+                    pending_doc = []
+                block.children.append(child)
             else:
+                if pending_doc:
+                    self.warnings.append(
+                        f"doc-comment(s) preceded a non-block line and were dropped: {pending_doc!r}"
+                    )
+                    pending_doc = []
                 self._consume_property_line(block, content)
+        if pending_doc:
+            self.warnings.append(
+                f"trailing doc-comment(s) with no following block: {pending_doc!r}"
+            )
 
     # ----- property-level parsing -----
 

@@ -157,7 +157,7 @@ def _to_table(block: TmdlBlock, expression_names: set[str]) -> Table:
         name=block.name,
         is_hidden="isHidden" in block.flags,
         data_category=block.properties.get("dataCategory"),
-        description=block.properties.get("description"),
+        description=block.description or block.properties.get("description"),
         lineage_tag=block.properties.get("lineageTag"),
         columns=columns,
         measures=measures,
@@ -173,7 +173,7 @@ def _to_column(block: TmdlBlock) -> Column:
         is_hidden="isHidden" in block.flags,
         is_key="isKey" in block.flags,
         source_column=block.properties.get("sourceColumn"),
-        description=block.properties.get("description"),
+        description=block.description or block.properties.get("description"),
         lineage_tag=block.properties.get("lineageTag"),
         expression=block.expression or None,
     )
@@ -186,7 +186,7 @@ def _to_measure(block: TmdlBlock, *, table_name: str) -> Measure:
         expression=block.expression.strip(),
         display_folder=block.properties.get("displayFolder"),
         format_string=block.properties.get("formatString"),
-        description=block.properties.get("description"),
+        description=block.description or block.properties.get("description"),
         is_hidden="isHidden" in block.flags,
         lineage_tag=block.properties.get("lineageTag"),
     )
@@ -214,7 +214,7 @@ def _to_calculation_group(block: TmdlBlock, *, table_name: str) -> CalculationGr
                     expression=child.expression.strip(),
                     ordinal=_safe_int(child.properties.get("ordinal")),
                     format_string=child.properties.get("formatString"),
-                    description=child.properties.get("description"),
+                    description=child.description or child.properties.get("description"),
                 )
             )
     precedence = _safe_int(block.properties.get("precedence"))
@@ -235,7 +235,7 @@ def _to_function(block: TmdlBlock) -> Function:
         name=block.name,
         expression=block.expression.strip(),
         return_type=block.properties.get("returnType"),
-        description=block.properties.get("description"),
+        description=block.description or block.properties.get("description"),
         lineage_tag=block.properties.get("lineageTag"),
     )
 

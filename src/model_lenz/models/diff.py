@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from model_lenz.models.semantic import Measure, Relationship, Table
+from model_lenz.models.semantic import Column, Measure, Relationship, Table
 
 DiffStatus = Literal["added", "removed", "modified"]
 
@@ -29,6 +29,25 @@ class MeasureDiff(BaseModel):
     """True when the set of directly-referenced tables changed."""
     userel_changed: bool = False
     """True when the set of USERELATIONSHIP overrides changed."""
+    description_changed: bool = False
+    display_folder_changed: bool = False
+    format_string_changed: bool = False
+    is_hidden_changed: bool = False
+
+
+class ColumnDiff(BaseModel):
+    """Per-column delta for columns present on both sides of a modified table."""
+
+    name: str
+    before: Column | None = None
+    head: Column | None = None
+    description_changed: bool = False
+    data_type_changed: bool = False
+    is_hidden_changed: bool = False
+    is_key_changed: bool = False
+    source_column_changed: bool = False
+    expression_changed: bool = False
+    """True when the calculated-column DAX expression differs."""
 
 
 class TableDiff(BaseModel):
@@ -41,8 +60,11 @@ class TableDiff(BaseModel):
     + schema + table + fully_qualified) differs between base and head."""
     columns_added: list[str] = Field(default_factory=list)
     columns_removed: list[str] = Field(default_factory=list)
+    columns_modified: list[ColumnDiff] = Field(default_factory=list)
     classification_before: str | None = None
     classification_head: str | None = None
+    description_changed: bool = False
+    is_hidden_changed: bool = False
 
 
 class RelationshipDiff(BaseModel):

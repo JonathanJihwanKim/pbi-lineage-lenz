@@ -24,6 +24,7 @@ Design choices that aren't obvious from the code:
 from __future__ import annotations
 
 from model_lenz.models.diff import (
+    ColumnDiff,
     DiffCounts,
     DiffPayload,
     MeasureDiff,
@@ -134,7 +135,19 @@ def _measures_diff(base: Model, head: Model) -> list[MeasureDiff]:
                 # back to the textual comparison. Better to flag the measure
                 # than to drop it from the diff silently.
                 pass
-            if dax_changed or refs_changed or userel_changed:
+            description_changed = (bm.description or "").strip() != (hm.description or "").strip()
+            display_folder_changed = (bm.display_folder or "") != (hm.display_folder or "")
+            format_string_changed = (bm.format_string or "") != (hm.format_string or "")
+            is_hidden_changed = bm.is_hidden != hm.is_hidden
+            if (
+                dax_changed
+                or refs_changed
+                or userel_changed
+                or description_changed
+                or display_folder_changed
+                or format_string_changed
+                or is_hidden_changed
+            ):
                 out.append(
                     MeasureDiff(
                         status="modified",
@@ -145,6 +158,10 @@ def _measures_diff(base: Model, head: Model) -> list[MeasureDiff]:
                         dax_changed=dax_changed,
                         refs_changed=refs_changed,
                         userel_changed=userel_changed,
+                        description_changed=description_changed,
+                        display_folder_changed=display_folder_changed,
+                        format_string_changed=format_string_changed,
+                        is_hidden_changed=is_hidden_changed,
                     )
                 )
     return out
@@ -183,12 +200,22 @@ def _tables_diff(base: Model, head: Model) -> list[TableDiff]:
             h_cols = {c.name for c in ht.columns}
             cols_added = sorted(h_cols - b_cols)
             cols_removed = sorted(b_cols - h_cols)
+            cols_modified = _columns_diff(bt, ht)
             b_lineage = _best_lineage_dict(bt)
             h_lineage = _best_lineage_dict(ht)
             lineage_changed = b_lineage != h_lineage
             cls_changed = bt.classification != ht.classification
             hidden_changed = bt.is_hidden != ht.is_hidden
-            if cols_added or cols_removed or lineage_changed or cls_changed or hidden_changed:
+            description_changed = (bt.description or "").strip() != (ht.description or "").strip()
+            if (
+                cols_added
+                or cols_removed
+                or cols_modified
+                or lineage_changed
+                or cls_changed
+                or hidden_changed
+                or description_changed
+            ):
                 out.append(
                     TableDiff(
                         status="modified",
@@ -198,10 +225,52 @@ def _tables_diff(base: Model, head: Model) -> list[TableDiff]:
                         source_lineage_changed=lineage_changed,
                         columns_added=cols_added,
                         columns_removed=cols_removed,
+                        columns_modified=cols_modified,
                         classification_before=bt.classification if cls_changed else None,
                         classification_head=ht.classification if cls_changed else None,
+                        description_changed=description_changed,
+                        is_hidden_changed=hidden_changed,
                     )
                 )
+    return out
+
+
+def _columns_diff(bt: Table, ht: Table) -> list[ColumnDiff]:
+    """Per-column delta for columns that exist on both sides. Added / removed
+    columns are surfaced separately as `columns_added` / `columns_removed`."""
+    b_index = {c.name: c for c in bt.columns}
+    h_index = {c.name: c for c in ht.columns}
+    out: list[ColumnDiff] = []
+    for name in sorted(set(b_index) & set(h_index)):
+        bc = b_index[name]
+        hc = h_index[name]
+        description_changed = (bc.description or "").strip() != (hc.description or "").strip()
+        data_type_changed = (bc.data_type or "") != (hc.data_type or "")
+        is_hidden_changed = bc.is_hidden != hc.is_hidden
+        is_key_changed = bc.is_key != hc.is_key
+        source_column_changed = (bc.source_column or "") != (hc.source_column or "")
+        expression_changed = (bc.expression or "").strip() != (hc.expression or "").strip()
+        if (
+            description_changed
+            or data_type_changed
+            or is_hidden_changed
+            or is_key_changed
+            or source_column_changed
+            or expression_changed
+        ):
+            out.append(
+                ColumnDiff(
+                    name=name,
+                    before=bc,
+                    head=hc,
+                    description_changed=description_changed,
+                    data_type_changed=data_type_changed,
+                    is_hidden_changed=is_hidden_changed,
+                    is_key_changed=is_key_changed,
+                    source_column_changed=source_column_changed,
+                    expression_changed=expression_changed,
+                )
+            )
     return out
 
 

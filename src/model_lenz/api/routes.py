@@ -11,12 +11,14 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from model_lenz.analyzers.diff import diff_models
 from model_lenz.analyzers.measure_graph import build_measure_graph
 from model_lenz.analyzers.relationships import RelationshipGraph
 from model_lenz.api.cache import ModelCache
+from model_lenz.exporters.markdown import measure_card, table_card
 from model_lenz.models.diff import DiffContext, DiffPayload
 from model_lenz.models.graph import MeasureGraph
 from model_lenz.models.semantic import Model
@@ -184,6 +186,34 @@ def measure_graph(
     return build_measure_graph(measure, model=model, rel_graph=rel_graph, depth=depth)
 
 
+@router.get(
+    "/measures/{table}/{name}/markdown",
+    response_class=PlainTextResponse,
+    responses={200: {"content": {"text/markdown": {}}}},
+)
+def measure_markdown(
+    table: str,
+    name: str,
+    request: Request,
+    state: State,
+    depth: int = Query(2, ge=1, le=5, description="Max relationship hops"),
+) -> PlainTextResponse:
+    """One-pager Markdown card for a measure — paste into PR/Jira/Slack."""
+    model, rel_graph = state
+    try:
+        body = measure_card(
+            model,
+            rel_graph,
+            table,
+            name,
+            depth=depth,
+            share_url=str(request.base_url),
+        )
+    except LookupError as e:
+        raise HTTPException(404, str(e)) from e
+    return PlainTextResponse(content=body, media_type="text/markdown; charset=utf-8")
+
+
 @router.get("/tables", response_model=list[TableListItem])
 def list_tables(state: State) -> list[TableListItem]:
     model, _ = state
@@ -236,6 +266,21 @@ def get_table(name: str, state: State):
         "table": t.model_dump(by_alias=True),
         "relationships": related,
     }
+
+
+@router.get(
+    "/tables/{name}/markdown",
+    response_class=PlainTextResponse,
+    responses={200: {"content": {"text/markdown": {}}}},
+)
+def table_markdown(name: str, request: Request, state: State) -> PlainTextResponse:
+    """One-pager Markdown card for a table — paste into PR/Jira/Slack."""
+    model, _ = state
+    try:
+        body = table_card(model, name, share_url=str(request.base_url))
+    except LookupError as e:
+        raise HTTPException(404, str(e)) from e
+    return PlainTextResponse(content=body, media_type="text/markdown; charset=utf-8")
 
 
 @router.get("/relationships")

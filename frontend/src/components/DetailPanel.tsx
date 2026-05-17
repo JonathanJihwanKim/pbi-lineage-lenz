@@ -18,8 +18,24 @@ export function DetailPanel() {
   const clearSelection = useStore((s) => s.clearSelection);
   const pinSelection = useStore((s) => s.pinSelection);
   const goBack = useStore((s) => s.goBack);
+  const depth = useStore((s) => s.depth);
+  const pushInfoToast = useStore((s) => s.pushInfoToast);
 
   if (!selection) return null;
+
+  async function copyMarkdown() {
+    if (!selection) return;
+    try {
+      const md =
+        selection.kind === "measure" && selection.table
+          ? await api.measureMarkdown(selection.table, selection.name, depth)
+          : await api.tableMarkdown(selection.name);
+      await navigator.clipboard.writeText(md);
+      pushInfoToast("Markdown copied");
+    } catch (e) {
+      pushInfoToast(`Copy failed: ${(e as Error).message}`);
+    }
+  }
 
   return (
     <aside className="detail-panel">
@@ -43,6 +59,12 @@ export function DetailPanel() {
           )}
           <button onClick={pinSelection} title="Pin to compare with another selection">
             Pin
+          </button>
+          <button
+            onClick={() => void copyMarkdown()}
+            title="Copy a Markdown handoff card for PR / Jira / Slack"
+          >
+            Copy MD
           </button>
           <button onClick={clearSelection} aria-label="Close" className="icon-btn">
             ×

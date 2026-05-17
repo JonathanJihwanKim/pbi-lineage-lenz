@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type {
+  DiffStatus,
   MeasureGraph,
   MeasureListItem,
   ModelSummary,
@@ -46,6 +47,21 @@ interface State {
   measureGraph: MeasureGraph | null;
   measureGraphLoading: boolean;
 
+  /** Ephemeral toast queue for non-error UI feedback ("Link copied", etc.).
+   *  Auto-dismisses after a few seconds via the Toaster component. */
+  infoToasts: { id: number; text: string }[];
+
+  /** Diff overlay state — populated only on the /diff route's Graph tab.
+   *  When `diffMode` is true the ForceGraph paints diff-status borders on
+   *  table cards and edges, and disables click-to-select (clicks would 404
+   *  on added items that exist only in HEAD). */
+  diffMode: boolean;
+  diffStatusByTable: Map<string, DiffStatus> | null;
+  /** Keyed by RelationshipItem.id (matches the relationship in the store).
+   *  RelationshipDiff carries a canonical from→to key; we re-key by id at
+   *  enterDiffMode time so the ForceGraph lookup is O(1). */
+  diffStatusByEdge: Map<string, DiffStatus> | null;
+
   // Actions.
   bootstrap: () => Promise<void>;
   setPbipPath: (p: string) => void;
@@ -69,7 +85,21 @@ interface State {
   clearSelection: () => void;
   pinSelection: () => void;
   unpinSelection: (sel: Selection) => void;
+  pushInfoToast: (text: string) => void;
+  dismissInfoToast: (id: number) => void;
+  /** Enter diff-overlay mode. Tables/relationships are augmented with the
+   *  HEAD-only (added) items so the bus layout shows the union; class filter
+   *  is opened up so non-backbone changes are visible. */
+  enterDiffMode: (args: {
+    tables: TableListItem[];
+    relationships: RelationshipItem[];
+    statusByTable: Map<string, DiffStatus>;
+    statusByEdge: Map<string, DiffStatus>;
+  }) => void;
+  exitDiffMode: () => void;
 }
+
+let nextInfoToastId = 1;
 
 const ALL_CLASSES = ["fact", "dim", "parameter", "time", "calculation_group", "other"];
 const BACKBONE_CLASSES = ["fact", "dim", "time"];
@@ -142,6 +172,10 @@ export const useStore = create<State>((set, get) => ({
   pinned: [],
   measureGraph: null,
   measureGraphLoading: false,
+  infoToasts: [],
+  diffMode: false,
+  diffStatusByTable: null,
+  diffStatusByEdge: null,
 
   bootstrap: async () => {
     set({ loading: true, error: null });
@@ -295,6 +329,30 @@ export const useStore = create<State>((set, get) => ({
       pinned: get().pinned.filter(
         (p) => !(p.kind === sel.kind && p.name === sel.name && p.table === sel.table),
       ),
+    }),
+
+  pushInfoToast: (text) =>
+    set({ infoToasts: [...get().infoToasts, { id: nextInfoToastId++, text }] }),
+  dismissInfoToast: (id) =>
+    set({ infoToasts: get().infoToasts.filter((t) => t.id !== id) }),
+
+  enterDiffMode: ({ tables, relationships, statusByTable, statusByEdge }) =>
+    set({
+      diffMode: true,
+      tables,
+      relationships,
+      diffStatusByTable: statusByTable,
+      diffStatusByEdge: statusByEdge,
+      // Show every classification on the diff canvas — without a Sidebar
+      // there's no way to expand the filter, and parameter / calc-group
+      // changes are review-worthy too.
+      classFilter: new Set(ALL_CLASSES),
+    }),
+  exitDiffMode: () =>
+    set({
+      diffMode: false,
+      diffStatusByTable: null,
+      diffStatusByEdge: null,
     }),
 }));
 

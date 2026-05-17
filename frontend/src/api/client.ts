@@ -20,6 +20,15 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (await r.json()) as T;
 }
 
+async function fetchText(url: string, accept: string): Promise<string> {
+  const r = await fetch(url, { headers: { Accept: accept } });
+  if (!r.ok) {
+    const text = await r.text().catch(() => r.statusText);
+    throw new Error(`${r.status} ${r.statusText}: ${text}`);
+  }
+  return await r.text();
+}
+
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const r = await fetch(url, {
     method: "POST",
@@ -59,4 +68,11 @@ export const api = {
   diff: () => fetchJson<DiffPayload>("/api/diff"),
   openPbip: (path: string) =>
     postJson<OpenPbipResponse>("/api/model/open", { path }),
+  measureMarkdown: (table: string, name: string, depth: number) =>
+    fetchText(
+      `/api/measures/${encodeURIComponent(table)}/${encodeURIComponent(name)}/markdown?depth=${depth}`,
+      "text/markdown",
+    ),
+  tableMarkdown: (name: string) =>
+    fetchText(`/api/tables/${encodeURIComponent(name)}/markdown`, "text/markdown"),
 };

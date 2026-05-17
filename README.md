@@ -42,6 +42,8 @@ The demo is a hand-authored 5-table model (Date, Customer, Product, Sales_fct, M
 
 1. Click **Margin %** in the left sidebar. The dashed edges light up across all three dimensions, even though the expression only mentions other measures.
 2. Look at any table node. Every node shows both its semantic-model name (the one a Power BI developer types in DAX) and the source identifier below it (the BigQuery / SQL / Snowflake path a data engineer recognizes). A small connector glyph on the source line tells you at a glance which warehouse the table came from.
+3. Click **Copy MD** in the right-hand detail panel. A one-pager Markdown card for Margin % is on your clipboard — DAX, direct/indirect tables, source lineage — ready to paste into a PR description or Jira ticket.
+4. Click **Copy link** in the header. The URL now encodes your selection and walk depth (`?table=Sales_fct&measure=Margin%20%25&depth=3`). Paste it into Slack and a teammate running `model-lenz serve` against the same PBIP lands on the exact same view.
 
 Got your own PBIP folder? Continue to [Install](#install).
 
@@ -64,33 +66,53 @@ Same graph for both sides. When the Power BI developer and the data engineer tal
 
 ### Compare two PBIPs
 
-`model-lenz diff <base_pbip> <head_pbip>` opens a side-by-side comparison of two model snapshots. Color-coded **added** / **modified** / **removed** across every measure, table, and relationship, with the full BASE vs HEAD DAX shown for every modified measure. If either folder is inside a Git working tree, branch names auto-fill the BASE / HEAD labels — a small gold ★ pin marks the side that's on the repo's default branch (`main` or `master`). A Swap button flips BASE ↔ HEAD if you ran the CLI in the wrong order.
+`model-lenz diff` opens a side-by-side comparison of two model snapshots. The diff view opens on a **Graph tab** by default — the same bus-layout canvas you see in single-model mode, painted with green (added), amber (modified), or red (removed) borders on table cards and relationship edges. A **List tab** behind it gives you the per-entity audit: every modified measure's BASE vs HEAD DAX, column-by-column deltas on each modified table, and source-lineage rewrites. The legend strip floating above the canvas reconciles to the same totals as the header — a `+N measure change →` chip jumps you to the List tab for changes that don't have a graph representation.
 
-**The catch: you need both PBIPs on disk at the same time.** Model Lenz reads files, not Git refs — and a normal `git checkout` only ever materializes one branch at a time. So if you're on a feature branch and want to diff against `main`, you need a second folder somewhere containing `main`'s state.
+Both views share the same swap button (flips BASE ↔ HEAD client-side) and the same export controls — `Copy Mermaid` and `Download SVG` in the top bar serialize the current canvas with status colors baked in, ready to paste into a PR description or attach to a design doc.
 
-The cleanest way to get one is **`git worktree`**. It asks Git to check out a second branch into a sibling folder, sharing your repo's `.git` data — no extra clone, no disturbing your current checkout:
+You can point it at two folders, or at two Git refs in the same repo.
+
+**By Git refs (recommended).** Pass `--git` and two ref strings. Model Lenz materializes each ref into a temp directory via `git archive` — your working tree is never touched, no worktree to clean up:
 
 ```powershell
-# From your feature-branch checkout
-cd D:\my_pbip_repo
-git worktree add ..\my_pbip_repo-main main
+# Diff origin/main vs your current HEAD, in the current repo
+model-lenz diff --git origin/main HEAD
 
-# BASE = main worktree, HEAD = current branch
-model-lenz diff ..\my_pbip_repo-main\import_contoso_sales.SemanticModel `
-                .\import_contoso_sales.SemanticModel
-
-# When you're done
-git worktree remove ..\my_pbip_repo-main
+# A different repo, with an explicit subpath if the repo has more than one PBIP
+model-lenz diff --git main feature/yoy `
+  --repo D:\my_pbip_repo `
+  --subpath import_contoso_sales.SemanticModel
 ```
 
-The diff header will read `BASE  main ★` on the left and `HEAD  <your-branch>` on the right, and a browser opens to `/diff`.
+Ref names auto-fill the BASE / HEAD pills. A gold ★ pin appears when BASE is `main`, `master`, `origin/main`, or `origin/master`.
 
-Other ways to land two folders side-by-side:
+**By folder paths (works everywhere).** When the two snapshots aren't refs in one repo — a teammate sent you a PBIP for review, you have two clones, you want to diff a backup — pass two folder paths directly:
 
-- A teammate sends a copy of their PBIP for review — point BASE at your local copy, HEAD at theirs.
-- Two separate clones of the same repo, one branch per clone. Heavier than a worktree but works the same.
+```powershell
+model-lenz diff ..\my_pbip_repo-main\import_contoso_sales.SemanticModel `
+                .\import_contoso_sales.SemanticModel
+```
 
-> A future `model-lenz diff --git origin/main HEAD` mode will skip the worktree step by resolving Git refs directly. See [roadmap](#roadmap).
+If you'd rather stay in the worktree pattern you used pre-v0.3.1:
+
+```powershell
+cd D:\my_pbip_repo
+git worktree add ..\my_pbip_repo-main main
+model-lenz diff ..\my_pbip_repo-main\import_contoso_sales.SemanticModel `
+                .\import_contoso_sales.SemanticModel
+git worktree remove ..\my_pbip_repo-main   # when done
+```
+
+Branch names auto-fill the BASE / HEAD pills when either folder is inside a working tree.
+
+### Share a view, hand it off, embed it
+
+Every interaction in Model Lenz is one paste away from a teammate's screen. The header buttons are the same on the single-model view and the diff view:
+
+- **Copy link.** Captures your current measure selection and walk depth in the URL — e.g. `/?table=Sales_fct&measure=Margin%20%25&depth=3`. Paste into Slack, a PR comment, or a Jira ticket. Anyone running `model-lenz serve` against the same PBIP lands on the exact same view. Filesystem paths are never encoded.
+- **Copy MD.** On the right-hand detail panel. Produces a one-pager Markdown card for the selected measure or table — DAX, referenced measures, direct + indirect tables walked at your current depth, USERELATIONSHIP overrides, source lineage, and a clickable share URL at the bottom. Paste straight into a PR description when asking a data engineer about a column rename.
+- **Copy Mermaid.** Header button. Serializes the current canvas as Mermaid `graph LR` syntax. Pastes into [mermaid.live](https://mermaid.live), GitHub / GitLab Markdown, Notion, or any renderer that speaks Mermaid. On the diff view the output includes status colors so the diagram in your PR matches the canvas you reviewed.
+- **Download SVG.** Header button. Saves a standalone SVG of the current canvas with the active theme baked in — preserves the current pan/zoom so you can frame a sub-graph before exporting. Drop into a design doc or Confluence page.
 
 ---
 
@@ -238,7 +260,8 @@ Commands:
 
 - `model-lenz demo`. The fastest way to see what the tool does. No path, no clone. Uses a bundled 5-table model.
 - `model-lenz serve <pbip>`. The main experience on your own model. Local web app plus interactive graph.
-- `model-lenz diff <base_pbip> <head_pbip>`. Side-by-side comparison of two model snapshots. Auto-detects Git branch names for the BASE / HEAD pills when either folder is inside a working tree; override with `--name-base` / `--name-head`.
+- `model-lenz diff <base_pbip> <head_pbip>`. Side-by-side comparison of two model snapshots — opens on a Graph tab (diff-status borders on the bus layout) with a List tab behind for the per-entity audit. Auto-detects Git branch names for the BASE / HEAD pills when either folder is inside a working tree; override with `--name-base` / `--name-head`.
+- `model-lenz diff --git <base_ref> <head_ref> [--repo <path>] [--subpath <path>]`. Same as above but BASE and HEAD are Git refs (branch / tag / SHA / `origin/main` / `HEAD~3`, etc.) resolved against `--repo` (default: current directory). Uses `git archive` so your working tree is never touched. Auto-detects the PBIP subpath when the repo root has exactly one `*.SemanticModel/` folder.
 - `model-lenz summary <pbip>`. Counts, classification breakdown, lineage confidence. Useful for CI.
 - `model-lenz inspect <pbip> -o model.json`. Full parsed model as JSON. Plug it into other tools.
 
@@ -254,7 +277,11 @@ Commands:
 | **Dual-name graph** | Every table node carries both its semantic-model name and its source identifier (BigQuery FQN, SQL `[schema].[table]`, Snowflake `DB.SCHEMA.TABLE`, file path) with a connector glyph. No mode toggle — both audiences read the same screenshot. |
 | **Relationships** | Active and inactive, all four cardinalities, single and bidirectional crossfilter. Walker honors filter-propagation direction and re-enables inactive relationships when a measure declares `USERELATIONSHIP(…)`. |
 | **Classification** | Heuristic fact / dim / parameter / time / calc-group / other, configurable via a `model_lenz.toml` in the PBIP root. |
-| **PBIP diff** | `model-lenz diff <base_pbip> <head_pbip>` produces a side-by-side comparison. Color-coded added / modified / removed for measures, tables, and relationships. Side-by-side DAX for modified measures. Git branch names auto-fill the BASE / HEAD labels. |
+| **PBIP diff** | `model-lenz diff <base> <head>` opens on a **Graph** tab — the bus-layout canvas with green (added) / amber (modified) / red (removed) borders on tables and edges. A **List** tab gives the per-entity audit (side-by-side BASE vs HEAD DAX for modified measures, column deltas, source-lineage rewrites). |
+| **Git-ref diff mode** | `model-lenz diff --git <base_ref> <head_ref>` materializes each ref into a temp directory via `git archive`. No worktree to set up, no working tree disturbed. |
+| **Shareable URLs** | Header **Copy link** captures the current measure + walk depth in the URL. Paste into Slack / PR / Jira; recipients running `model-lenz serve` against the same PBIP land on the same view. No filesystem paths encoded. |
+| **Markdown handoff cards** | Detail-panel **Copy MD** button produces a one-pager (DAX + direct & indirect tables + source lineage + share URL) per measure or table. Paste into a PR description when asking a data engineer about a column rename. |
+| **Mermaid / SVG export** | Header **Copy Mermaid** and **Download SVG** serialize the current canvas. Diff exports preserve the green / amber / red status colors. SVG bakes in the active theme and current pan/zoom. |
 | **Theme** | Dark (default) and light themes, both with the Power BI gold gradient as the brand accent. Theme switch lives in a labeled `Dark / Light` control next to `Hops` in the header. |
 | **Switch PBIPs in-app** | Header **Open…** button swaps the active PBIP at runtime — no server restart. Previously loaded PBIPs stay cached so toggling back is instant. |
 | **Distribution** | Single Python wheel. Install via `uv tool install model-lenz` (recommended) or `pipx install model-lenz`. Frontend bundle is included; no Node required at install time. |
@@ -266,14 +293,14 @@ Commands:
 
 Model Lenz exists because Power BI developers and data engineers need to look at the same model and have the same conversation about it. Everything on this roadmap serves that handshake. It surfaces model changes early, in a vocabulary both sides recognize, on a surface both sides can review.
 
-- **v0.3.x. Diff polish.**
-  - **Diff on the graph canvas.** v0.3.0 ships the diff as a structured list. The next polish iteration overlays diff status (green / amber / red borders) on the existing bus-layout graph so the same canvas does double duty.
-  - **Per-measure / per-table Markdown handoff cards.** One-pager exports a BI developer can paste into Jira, Slack, or a PR description when asking the data engineer about a specific column or relationship.
-  - **Shareable URLs.** Capture the selected measure, walk depth, and (in diff view) the BASE / HEAD paths in the URL. Paste into a PR or Slack thread and both sides land on the exact same view.
-  - **Export to Mermaid / SVG.** Embed sub-graphs and diffs in pull requests and design docs.
-  - **Git-ref diff mode.** `model-lenz diff --git origin/main HEAD` for users who want to diff two refs in the same repo without materializing two folders.
+- **v0.3.x. Diff polish.** _Shipped._
+  - Diff on the graph canvas — green / amber / red borders on tables and edges, with a Graph / List tab toggle at `/diff`.
+  - Per-measure / per-table Markdown handoff cards via **Copy MD**.
+  - Shareable URLs (selection + walk depth) via **Copy link**.
+  - Export to Mermaid / SVG via header buttons — works on both the single-model view and the diff view.
+  - Git-ref diff mode — `model-lenz diff --git origin/main HEAD` materializes refs via `git archive` instead of requiring a manual worktree.
 
-> **Where your sponsorship goes.** The graph-canvas diff overlay, the handoff cards, the v0.4 CI gate, and the next batch of source connectors (Snowflake native SQL, Databricks, Synapse Serverless) are the next things on the build list. [GitHub Sponsors](https://github.com/sponsors/JonathanJihwanKim) or [Buy Me a Coffee](https://www.buymeacoffee.com/jihwankim) accelerates them.
+> **Where your sponsorship goes.** The v0.4 CI gate (`model-lenz check`) and the next batch of source connectors (Snowflake native SQL, Databricks, Synapse Serverless) are the next things on the build list. [GitHub Sponsors](https://github.com/sponsors/JonathanJihwanKim) or [Buy Me a Coffee](https://www.buymeacoffee.com/jihwankim) accelerates them.
 
 - **v0.4. Guardrails before the merge.**
   - **`model-lenz check` for CI.** Extends `summary` into a policy-gate command that can fail a build on orphan measures, fact tables sourced from more than one warehouse, ambiguous propagation paths through multiple facts, or measures whose indirect-table set grew by more than N tables in a single commit. Catches anti-patterns at PR time, before they become a review thread.
@@ -362,9 +389,8 @@ Model Lenz is free, ad-free, and never phones home. Every parser, walker, and gr
 
 **Where sponsorship goes:**
 
-- **Graph-canvas diff overlay (v0.3.x).** v0.3.0 ships the diff as a structured list; the next iteration paints diff status onto the existing bus-layout graph so the same canvas does double duty.
-- **Markdown handoff cards (v0.3.x).** Per-measure and per-table one-pagers a BI developer can paste into a PR description, Jira ticket, or Slack thread when asking a data engineer about a specific column.
 - **`model-lenz check` CI gate (v0.4).** Fail a build on orphan measures, fact tables sourced from more than one warehouse, ambiguous propagation paths, or indirect-table-set growth above a threshold.
+- **Annotation layer on sub-graph exports (v0.4).** Inline reviewer comments on an exported SVG / Mermaid sub-graph attached to a PR.
 - **New source connectors.** Snowflake native SQL, Databricks, Synapse Serverless. Each opens a class of warehouses Model Lenz currently labels with low confidence.
 - **Documentation, issue triage, maintenance.** The unglamorous work that keeps the tool usable.
 

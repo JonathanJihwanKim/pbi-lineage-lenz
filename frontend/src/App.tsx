@@ -9,6 +9,11 @@ import { Toaster } from "./components/Toaster";
 import { ForceGraph } from "./graph/ForceGraph";
 import { DiffView } from "./routes/Diff";
 import { useStore } from "./store";
+import {
+  hydrateSelectionFromUrl,
+  parseSelectionUrl,
+  useUrlSync,
+} from "./hooks/useUrlSync";
 
 export function App() {
   const theme = useStore((s) => s.theme);
@@ -33,6 +38,8 @@ function ModelView() {
   const loading = useStore((s) => s.loading);
   const error = useStore((s) => s.error);
 
+  useUrlSync();
+
   useEffect(() => {
     const saved = localStorage.getItem("model-lenz-right-panel-width");
     if (saved) {
@@ -45,7 +52,8 @@ function ModelView() {
       .then((r) => r.json())
       .then((h: { pbip: string }) => setPbipPath(h.pbip ?? "(unknown)"))
       .catch(() => setPbipPath("(unknown)"));
-    bootstrap();
+    const parsed = parseSelectionUrl();
+    bootstrap().then(() => hydrateSelectionFromUrl(parsed));
   }, [bootstrap, setPbipPath]);
 
   return (

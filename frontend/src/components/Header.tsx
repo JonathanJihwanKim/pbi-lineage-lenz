@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
+import { useExportHandlers } from "../hooks/useExportHandlers";
 
 export function Header() {
   const depth = useStore((s) => s.depth);
@@ -11,6 +12,18 @@ export function Header() {
   const summary = useStore((s) => s.summary);
   const pbipPath = useStore((s) => s.pbipPath);
   const showOpenModal = useStore((s) => s.showOpenModal);
+  const pushInfoToast = useStore((s) => s.pushInfoToast);
+  const { copyMermaid, downloadSvg } = useExportHandlers();
+
+  async function copyShareLink() {
+    const href = window.location.href;
+    try {
+      await navigator.clipboard.writeText(href);
+      pushInfoToast("Link copied");
+    } catch {
+      pushInfoToast("Copy failed — copy URL from address bar");
+    }
+  }
 
   return (
     <header className="header">
@@ -31,6 +44,27 @@ export function Header() {
           title="Open a different PBIP folder"
         >
           Open…
+        </button>
+        <button
+          className="header-open-btn"
+          onClick={copyShareLink}
+          title="Copy a link to this view (selection + depth)"
+        >
+          Copy link
+        </button>
+        <button
+          className="header-open-btn"
+          onClick={() => void copyMermaid()}
+          title="Copy the current canvas as a Mermaid diagram for PR / docs"
+        >
+          Copy Mermaid
+        </button>
+        <button
+          className="header-open-btn"
+          onClick={downloadSvg}
+          title="Download the current canvas as an SVG"
+        >
+          Download SVG
         </button>
       </div>
 

@@ -72,6 +72,9 @@ export function ForceGraph() {
   const measureGraph = useStore((s) => s.measureGraph);
   const selectTable = useStore((s) => s.selectTable);
   const pinSelection = useStore((s) => s.pinSelection);
+  const diffMode = useStore((s) => s.diffMode);
+  const diffStatusByTable = useStore((s) => s.diffStatusByTable);
+  const diffStatusByEdge = useStore((s) => s.diffStatusByEdge);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -437,30 +440,33 @@ export function ForceGraph() {
         <g className="viewport">
           {/* Edges first so cards render on top */}
           <g className="edges">
-            {layout.edges.map((e) => (
-              <g
-                key={e.id}
-                className="edge"
-                style={{ opacity: edgeOpacity(e) }}
-              >
-                <path
-                  d={e.path}
-                  fill="none"
-                  stroke={edgeStroke(e)}
-                  strokeWidth={edgeStrokeWidth(e)}
-                  strokeDasharray={edgeDash(e)}
-                  markerEnd={
-                    e.anomalous
-                      ? "url(#arrow-anomaly)"
-                      : spotlight?.highlightedRelIds.has(e.id)
-                        ? "url(#arrow-fact-hot)"
-                        : "url(#arrow-fact)"
-                  }
-                />
-                <CardinalityGlyph edge={e} kind="dim" />
-                <CardinalityGlyph edge={e} kind="fact" />
-              </g>
-            ))}
+            {layout.edges.map((e) => {
+              const diffStatus = diffStatusByEdge?.get(e.rel.id) ?? null;
+              return (
+                <g
+                  key={e.id}
+                  className={`edge${diffStatus ? ` diff-${diffStatus}` : ""}`}
+                  style={{ opacity: edgeOpacity(e) }}
+                >
+                  <path
+                    d={e.path}
+                    fill="none"
+                    stroke={diffStatus ? diffStrokeFor(diffStatus) : edgeStroke(e)}
+                    strokeWidth={diffStatus ? 2 : edgeStrokeWidth(e)}
+                    strokeDasharray={diffStatus === "removed" ? "5 4" : edgeDash(e)}
+                    markerEnd={
+                      e.anomalous
+                        ? "url(#arrow-anomaly)"
+                        : spotlight?.highlightedRelIds.has(e.id)
+                          ? "url(#arrow-fact-hot)"
+                          : "url(#arrow-fact)"
+                    }
+                  />
+                  <CardinalityGlyph edge={e} kind="dim" />
+                  <CardinalityGlyph edge={e} kind="fact" />
+                </g>
+              );
+            })}
           </g>
 
           {/* Spotlight: direct-ref edges from synthetic measure node */}
@@ -482,40 +488,46 @@ export function ForceGraph() {
 
           {/* Table cards */}
           <g className="nodes">
-            {layout.nodes.map((n) => (
-              <g
-                key={n.id}
-                className={`node node-${n.classification}`}
-                style={{
-                  // CSS transform (not SVG attribute) so the .bus-graph .node
-                  // transition rule animates Pack-mode reshuffles smoothly.
-                  transform: `translate(${n.position.x}px, ${n.position.y}px)`,
-                  opacity: nodeOpacity(n),
-                  cursor: "pointer",
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  selectTable(n.label);
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  pinSelection();
-                }}
-                onMouseEnter={(e) => showTooltip(e, n)}
-                onMouseMove={(e) => showTooltip(e, n)}
-                onMouseLeave={hideTooltip}
-              >
-                <rect
-                  x={-CARD_W / 2}
-                  y={-CARD_H / 2}
-                  width={CARD_W}
-                  height={CARD_H}
-                  rx={4}
-                  className="card-rect"
-                />
-                <NodeLabels node={n} />
-              </g>
-            ))}
+            {layout.nodes.map((n) => {
+              const diffStatus = diffStatusByTable?.get(n.label) ?? null;
+              return (
+                <g
+                  key={n.id}
+                  className={`node node-${n.classification}${
+                    diffStatus ? ` diff-${diffStatus}` : ""
+                  }`}
+                  style={{
+                    // CSS transform (not SVG attribute) so the .bus-graph .node
+                    // transition rule animates Pack-mode reshuffles smoothly.
+                    transform: `translate(${n.position.x}px, ${n.position.y}px)`,
+                    opacity: nodeOpacity(n),
+                    cursor: diffMode ? "default" : "pointer",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (diffMode) return; // added items 404 in BASE; disable
+                    selectTable(n.label);
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (!diffMode) pinSelection();
+                  }}
+                  onMouseEnter={(e) => showTooltip(e, n)}
+                  onMouseMove={(e) => showTooltip(e, n)}
+                  onMouseLeave={hideTooltip}
+                >
+                  <rect
+                    x={-CARD_W / 2}
+                    y={-CARD_H / 2}
+                    width={CARD_W}
+                    height={CARD_H}
+                    rx={4}
+                    className="card-rect"
+                  />
+                  <NodeLabels node={n} />
+                </g>
+              );
+            })}
           </g>
 
           {/* Spotlight measure node */}
@@ -757,6 +769,14 @@ function escape(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
     c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;",
   );
+}
+
+/** Stroke color for an edge under diff overlay. Falls back to CSS variables
+ *  so the dark/light themes can override the hue if needed. */
+function diffStrokeFor(status: "added" | "removed" | "modified"): string {
+  if (status === "added") return "var(--diff-added, #2faa6a)";
+  if (status === "removed") return "var(--diff-removed, #d6452a)";
+  return "var(--diff-modified, #d29420)";
 }
 
 /** Glyph for the "one side" of a relationship. */

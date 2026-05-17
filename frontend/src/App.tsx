@@ -1,18 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { DetailPanel } from "./components/DetailPanel";
 import { Legend } from "./components/Legend";
+import { OpenPbipModal } from "./components/OpenPbipModal";
 import { PinnedBar } from "./components/PinnedBar";
 import { Toaster } from "./components/Toaster";
 import { ForceGraph } from "./graph/ForceGraph";
 import { DiffView } from "./routes/Diff";
 import { useStore } from "./store";
-
-interface HealthInfo {
-  pbip: string;
-  version: string;
-}
 
 export function App() {
   const theme = useStore((s) => s.theme);
@@ -33,9 +29,9 @@ export function App() {
 
 function ModelView() {
   const bootstrap = useStore((s) => s.bootstrap);
+  const setPbipPath = useStore((s) => s.setPbipPath);
   const loading = useStore((s) => s.loading);
   const error = useStore((s) => s.error);
-  const [health, setHealth] = useState<HealthInfo | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("model-lenz-right-panel-width");
@@ -47,14 +43,14 @@ function ModelView() {
   useEffect(() => {
     fetch("/healthz")
       .then((r) => r.json())
-      .then(setHealth)
-      .catch(() => setHealth({ pbip: "(unknown)", version: "?" }));
+      .then((h: { pbip: string }) => setPbipPath(h.pbip ?? "(unknown)"))
+      .catch(() => setPbipPath("(unknown)"));
     bootstrap();
-  }, [bootstrap]);
+  }, [bootstrap, setPbipPath]);
 
   return (
     <div className="app">
-      <Header pbipPath={health?.pbip ?? ""} />
+      <Header />
       <div className="app-body">
         <Sidebar />
         <main className="canvas">
@@ -70,6 +66,7 @@ function ModelView() {
         </main>
         <DetailPanel />
       </div>
+      <OpenPbipModal />
       <Toaster />
     </div>
   );

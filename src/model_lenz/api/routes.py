@@ -7,6 +7,7 @@ Exposed under ``/api``. The frontend (M3) consumes this contract; the CLI's
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -19,6 +20,7 @@ from model_lenz.api.cache import ModelCache
 from model_lenz.models.diff import DiffContext, DiffPayload
 from model_lenz.models.graph import MeasureGraph
 from model_lenz.models.semantic import Model
+from model_lenz.parsers.pbip import find_semantic_model
 
 router = APIRouter(prefix="/api")
 
@@ -77,6 +79,15 @@ class SearchHit(BaseModel):
     score: int
 
 
+class OpenPbipRequest(BaseModel):
+    path: str
+
+
+class OpenPbipResponse(BaseModel):
+    path: str
+    summary: ModelSummary
+
+
 # --------------------------------------------------------------------------- #
 # Endpoints
 # --------------------------------------------------------------------------- #
@@ -85,6 +96,10 @@ class SearchHit(BaseModel):
 @router.get("/model", response_model=ModelSummary)
 def get_model_summary(state: State) -> ModelSummary:
     model, _ = state
+    return _build_summary(model)
+
+
+def _build_summary(model: Model) -> ModelSummary:
     counts = {
         "tables": len(model.tables),
         "measures": sum(len(t.measures) for t in model.tables),
@@ -104,6 +119,30 @@ def get_model_summary(state: State) -> ModelSummary:
         lineage_confidence=dict(confidence),
         warnings=model.warnings,
     )
+
+
+@router.post("/model/open", response_model=OpenPbipResponse)
+def open_pbip(body: OpenPbipRequest, request: Request) -> OpenPbipResponse:
+    """Switch the server's active PBIP path at runtime.
+
+    Trusts localhost — `model-lenz serve` binds 127.0.0.1 by default. Refused
+    in diff mode (`model-lenz diff`) because the two-PBIP pinning would be
+    inconsistent with a single-model swap.
+    """
+    if request.app.state.diff_context:
+        raise HTTPException(
+            409,
+            "Cannot switch PBIPs while a diff session is active. "
+            "Restart with `model-lenz serve` for the single-model view.",
+        )
+    try:
+        find_semantic_model(body.path)
+    except FileNotFoundError as e:
+        raise HTTPException(400, str(e)) from e
+    resolved = str(Path(body.path).resolve())
+    request.app.state.pbip_path = resolved
+    model, _ = get_state(request)
+    return OpenPbipResponse(path=resolved, summary=_build_summary(model))
 
 
 @router.get("/measures", response_model=list[MeasureListItem])

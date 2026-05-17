@@ -207,6 +207,19 @@ pre {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.header-open-btn {
+  margin-left: 8px;
+  padding: 3px 10px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-1);
+}
+.header-open-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-0);
+}
+
 .header-search {
   display: flex;
 }
@@ -1517,4 +1530,88 @@ pre {
 .link-back:hover {
   background: var(--bg-2);
   color: var(--text-0);
+}
+
+/* ----------------------------- modal (Open PBIP) ------------------------ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+  z-index: 300;
+}
+.modal {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 20px 22px;
+  width: 520px;
+  max-width: calc(100vw - 32px);
+}
+.modal-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-0);
+}
+.modal-subtext {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.modal-subtext code {
+  background: var(--bg-2);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.modal-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.modal-error {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--error);
+  border-radius: var(--radius-sm);
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--error);
+  font-size: 12px;
+  word-break: break-word;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.modal-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-1);
+}
+.modal-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text-0);
+}
+.modal-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.modal-btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.modal-btn-primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--on-accent);
 }

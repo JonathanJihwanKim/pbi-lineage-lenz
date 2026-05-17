@@ -25,6 +25,10 @@ interface State {
   loading: boolean;
   error: string | null;
 
+  // The active PBIP path (seeded from /healthz on mount; updated by openPbip).
+  pbipPath: string | null;
+  openModalVisible: boolean;
+
   // UI state.
   theme: Theme;
   depth: number;
@@ -44,6 +48,11 @@ interface State {
 
   // Actions.
   bootstrap: () => Promise<void>;
+  setPbipPath: (p: string) => void;
+  showOpenModal: () => void;
+  hideOpenModal: () => void;
+  /** Switch the server to a different PBIP and refresh all reference data. */
+  openPbip: (path: string) => Promise<void>;
   toggleTheme: () => void;
   setDepth: (d: number) => Promise<void>;
   setSearch: (s: string) => void;
@@ -116,6 +125,9 @@ export const useStore = create<State>((set, get) => ({
   loading: false,
   error: null,
 
+  pbipPath: null,
+  openModalVisible: false,
+
   theme: (localStorage.getItem("model-lenz-theme") as Theme) || "dark",
   depth: 2,
   search: "",
@@ -144,6 +156,28 @@ export const useStore = create<State>((set, get) => ({
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
     }
+  },
+
+  setPbipPath: (p) => set({ pbipPath: p }),
+  showOpenModal: () => set({ openModalVisible: true }),
+  hideOpenModal: () => set({ openModalVisible: false }),
+  openPbip: async (path) => {
+    // Lets the caller's try/catch surface the server's 400/409 message inline
+    // (modal validation). On success: reset selection + ephemeral UI state so
+    // nothing carries over from the previous model, then re-bootstrap.
+    const res = await api.openPbip(path);
+    set({
+      pbipPath: res.path,
+      summary: res.summary,
+      selection: null,
+      selectionHistory: [],
+      pinned: [],
+      measureGraph: null,
+      measureGraphLoading: false,
+      search: "",
+      openModalVisible: false,
+    });
+    await get().bootstrap();
   },
 
   toggleTheme: () => {

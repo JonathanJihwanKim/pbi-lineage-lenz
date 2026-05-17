@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
 
-export function Header({ pbipPath }: { pbipPath: string }) {
+export function Header() {
   const depth = useStore((s) => s.depth);
   const setDepth = useStore((s) => s.setDepth);
   const search = useStore((s) => s.search);
@@ -9,6 +9,8 @@ export function Header({ pbipPath }: { pbipPath: string }) {
   const theme = useStore((s) => s.theme);
   const toggleTheme = useStore((s) => s.toggleTheme);
   const summary = useStore((s) => s.summary);
+  const pbipPath = useStore((s) => s.pbipPath);
+  const showOpenModal = useStore((s) => s.showOpenModal);
 
   return (
     <header className="header">
@@ -20,9 +22,16 @@ export function Header({ pbipPath }: { pbipPath: string }) {
           </svg>
         </span>
         <span className="header-title">Model Lenz</span>
-        <span className="header-pbip" title={pbipPath}>
-          {summary?.name ?? shortPath(pbipPath)}
+        <span className="header-pbip" title={pbipPath ?? ""}>
+          {summary?.name ?? shortPath(pbipPath ?? "")}
         </span>
+        <button
+          className="header-open-btn"
+          onClick={showOpenModal}
+          title="Open a different PBIP folder"
+        >
+          Open…
+        </button>
       </div>
 
       <div className="header-search">

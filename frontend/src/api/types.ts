@@ -205,6 +205,11 @@ export interface SearchHit {
   score: number;
 }
 
+export interface OpenPbipResponse {
+  path: string;
+  summary: ModelSummary;
+}
+
 // --------------------------------------------------------------------------
 // Diff (v0.3)
 // --------------------------------------------------------------------------

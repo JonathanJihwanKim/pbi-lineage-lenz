@@ -69,6 +69,12 @@ export function toMermaidString(input: MermaidInput): string {
     lines.push(`  ${id}["${mermaidLabel(n)}"]`);
   }
 
+  // Track the 0-based index of every emitted edge (measureRoot edges + filtered
+  // relationship edges), since Mermaid's `linkStyle N` references edges by the
+  // order they appear in the source.
+  let edgeIdx = 0;
+  const linkStyleLines: string[] = [];
+
   if (input.measureRoot) {
     const rootId = uniqueId("MEASURE_" + mermaidId(input.measureRoot.name), usedIds);
     lines.push(
@@ -78,6 +84,7 @@ export function toMermaidString(input: MermaidInput): string {
       const targetId = idFor.get(target);
       if (!targetId) continue;
       lines.push(`  ${rootId} -.->|direct| ${targetId}`);
+      edgeIdx++;
     }
     lines.push(`  style ${rootId} fill:#e6b41e,stroke:#7d5b00,color:#1a1a1a`);
   }
@@ -90,6 +97,14 @@ export function toMermaidString(input: MermaidInput): string {
     const flag = !e.isActive ? " inactive" : "";
     const arrow = mermaidArrow(e.crossfilter, e.isActive);
     lines.push(`  ${fromId} ${arrow}|${card}${flag}| ${toId}`);
+    if (e.status) {
+      const color = diffColor(e.status);
+      const dash = e.status === "removed" ? ",stroke-dasharray: 4 3" : "";
+      linkStyleLines.push(
+        `  linkStyle ${edgeIdx} stroke:${color},stroke-width:2.5px${dash}`,
+      );
+    }
+    edgeIdx++;
   }
 
   for (const n of input.nodes) {
@@ -99,6 +114,10 @@ export function toMermaidString(input: MermaidInput): string {
     const color = diffColor(n.status);
     const dash = n.status === "removed" ? ",stroke-dasharray: 4 3" : "";
     lines.push(`  style ${id} stroke:${color},stroke-width:2.5px${dash}`);
+  }
+
+  for (const ls of linkStyleLines) {
+    lines.push(ls);
   }
 
   return lines.join("\n") + "\n";

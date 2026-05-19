@@ -111,7 +111,7 @@ Every interaction in Model Lenz is one paste away from a teammate's screen. The 
 
 - **Copy link.** Captures your current measure selection and walk depth in the URL — e.g. `/?table=Sales_fct&measure=Margin%20%25&depth=3`. Paste into Slack, a PR comment, or a Jira ticket. Anyone running `model-lenz serve` against the same PBIP lands on the exact same view. Filesystem paths are never encoded.
 - **Copy MD.** On the right-hand detail panel. Produces a one-pager Markdown card for the selected measure or table — DAX, referenced measures, direct + indirect tables walked at your current depth, USERELATIONSHIP overrides, source lineage, and a clickable share URL at the bottom. Paste straight into a PR description when asking a data engineer about a column rename.
-- **Copy Mermaid.** Header button. Serializes the current canvas as Mermaid `graph LR` syntax. Pastes into [mermaid.live](https://mermaid.live), GitHub / GitLab Markdown, Notion, or any renderer that speaks Mermaid. On the diff view the output includes status colors so the diagram in your PR matches the canvas you reviewed.
+- **Copy Mermaid.** Header button. Serializes the current canvas as Mermaid `graph LR` syntax. Pastes into [mermaid.live](https://mermaid.live), GitHub / GitLab Markdown, Notion, or any renderer that speaks Mermaid. On the diff view, both table borders and relationship arrows are emitted in their green / amber / red status colors, and removed edges render dashed — the diagram in your PR matches the canvas you reviewed (v0.3.2+).
 - **Download SVG.** Header button. Saves a standalone SVG of the current canvas with the active theme baked in — preserves the current pan/zoom so you can frame a sub-graph before exporting. Drop into a design doc or Confluence page.
 
 ---
@@ -281,7 +281,7 @@ Commands:
 | **Git-ref diff mode** | `model-lenz diff --git <base_ref> <head_ref>` materializes each ref into a temp directory via `git archive`. No worktree to set up, no working tree disturbed. |
 | **Shareable URLs** | Header **Copy link** captures the current measure + walk depth in the URL. Paste into Slack / PR / Jira; recipients running `model-lenz serve` against the same PBIP land on the same view. No filesystem paths encoded. |
 | **Markdown handoff cards** | Detail-panel **Copy MD** button produces a one-pager (DAX + direct & indirect tables + source lineage + share URL) per measure or table. Paste into a PR description when asking a data engineer about a column rename. |
-| **Mermaid / SVG export** | Header **Copy Mermaid** and **Download SVG** serialize the current canvas. Diff exports preserve the green / amber / red status colors. SVG bakes in the active theme and current pan/zoom. |
+| **Mermaid / SVG export** | Header **Copy Mermaid** and **Download SVG** serialize the current canvas. Diff exports color both table borders and relationship arrows (green / amber / red), with removed edges dashed — needs v0.3.2+ for the edge coloring. SVG bakes in the active theme and current pan/zoom. |
 | **Theme** | Dark (default) and light themes, both with the Power BI gold gradient as the brand accent. Theme switch lives in a labeled `Dark / Light` control next to `Hops` in the header. |
 | **Switch PBIPs in-app** | Header **Open…** button swaps the active PBIP at runtime — no server restart. Previously loaded PBIPs stay cached so toggling back is instant. |
 | **Distribution** | Single Python wheel. Install via `uv tool install model-lenz` (recommended) or `pipx install model-lenz`. Frontend bundle is included; no Node required at install time. |
@@ -299,6 +299,7 @@ Model Lenz exists because Power BI developers and data engineers need to look at
   - Shareable URLs (selection + walk depth) via **Copy link**.
   - Export to Mermaid / SVG via header buttons — works on both the single-model view and the diff view.
   - Git-ref diff mode — `model-lenz diff --git origin/main HEAD` materializes refs via `git archive` instead of requiring a manual worktree.
+  - **v0.3.2 patch (2026-05-19).** Mermaid diff exports now color relationship arrows, not just table borders. Removed edges render dashed, matching the canvas. Single-model exports unchanged.
 
 > **Where your sponsorship goes.** The v0.4 CI gate (`model-lenz check`) and the next batch of source connectors (Snowflake native SQL, Databricks, Synapse Serverless) are the next things on the build list. [GitHub Sponsors](https://github.com/sponsors/JonathanJihwanKim) or [Buy Me a Coffee](https://www.buymeacoffee.com/jihwankim) accelerates them.
 

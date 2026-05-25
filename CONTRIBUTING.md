@@ -2,6 +2,29 @@
 
 Thanks for your interest in improving Model Lenz. This guide covers how to set up the project locally, where things live, and what kind of changes are most welcome.
 
+## Architecture at a glance
+
+```
+                           ┌───────────────────┐
+   .tmdl, .pq files  ───▶  │  Python backend   │  ◀── HTTP /api  ───┐
+   in your PBIP            │  parsers /        │                    │
+                           │  analyzers /      │   ┌──────────────────┐
+                           │  FastAPI          │   │ React + Vite SPA │
+                           └───────────────────┘   │ D3 force graph   │
+                                  ▲                │ Zustand store    │
+                                  │                └──────────────────┘
+                           model-lenz CLI
+                          (typer + uvicorn)
+```
+
+- **Parser layer** (`src/model_lenz/parsers/`). TMDL block parser (indent-aware state machine), DAX reference extractor (hand-rolled tokenizer), M-query lineage extractor (recursive descent with native-SQL parsing).
+- **Analysis layer** (`src/model_lenz/analyzers/`). Relationship graph and indirect-dep walker on NetworkX, transitive measure resolver, fact/dim classifier.
+- **JSON contract** (`src/model_lenz/models/`). Pydantic models that the API serializes and the frontend mirrors as TypeScript types. `mypy --strict` runs **only** on this package.
+- **HTTP API** (`src/model_lenz/api/routes.py`). FastAPI. Full OpenAPI at `/docs`.
+- **Frontend** (`frontend/`). React 18 + Vite + TypeScript. Force graph in D3 directly (no Cytoscape). Zustand for state.
+
+For the full data-flow trace through a single `/api/measures/{table}/{name}/graph` request, see [CLAUDE.md](CLAUDE.md).
+
 ## Project layout
 
 ```

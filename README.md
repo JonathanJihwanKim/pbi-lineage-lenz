@@ -45,7 +45,7 @@ Need help with PATH on Windows, updates, path forms, or troubleshooting? → [do
 
 Model Lenz is free, ad-free, never phones home. Sponsorship is what decides what ships next. Right now your contribution funds:
 
-- **`model-lenz check` for CI (v0.4).** Fail a PR build on orphan measures, ambiguous propagation paths, or a sudden indirect-table-set blow-up.
+- **`model-lenz check` for CI (v0.4).** Shipped — fails a PR build on broken references, ambiguous propagation paths, or an indirect-table-set blow-up past your threshold. Next up: baseline-drift comparison (`--git` against `main`) so the gate catches a *sudden* blow-up, not just an absolute one.
 - **Annotation layer on sub-graph exports.** Inline reviewer comments on exported SVG / Mermaid attached to a PR.
 - **Snowflake-native-SQL, Databricks, Synapse Serverless connectors.** Each opens a class of warehouses Model Lenz currently labels with low confidence.
 
@@ -63,6 +63,7 @@ Sponsor at the $10+ tier and you'll be listed (with your consent) in the [Hall o
 - **`serve`** — interactive measure-dependency graph for any PBIP. Switch PBIPs in-app via the header **Open…** button; no server restart.
 - **`diff`** — two PBIPs (or two Git refs via `--git`) side-by-side on the same graph canvas, with a List tab for the per-entity audit. → [docs/diff.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/diff.md)
 - **`summary` / `inspect`** — counts, classification breakdown, full parsed model as JSON. CI-friendly.
+- **`check`** — CI gate that fails a PR build on broken references, ambiguous propagation paths, or an indirect-table blow-up. Text / JSON output plus GitHub Actions annotations.
 - **Share + embed** — **Copy link** (selection + depth in URL), **Copy MD** (one-pager handoff card), **Copy Mermaid**, **Download SVG**. Diff exports color both borders and arrows; removed edges render dashed.
 
 Full CLI reference and feature table: [docs/cli.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/cli.md). Concepts and FAQ: [docs/faq.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/faq.md).
@@ -72,7 +73,7 @@ Full CLI reference and feature table: [docs/cli.md](https://github.com/JonathanJ
 ## Roadmap
 
 - **v0.3.x — diff polish.** _Shipped._ Graph-canvas diff, shareable URLs, Markdown handoff cards, Mermaid / SVG exports, Git-ref diff mode. v0.3.2 colored relationship arrows in Mermaid diff exports.
-- **v0.4 — guardrails before the merge.** `model-lenz check` CI gate · annotation layer on sub-graph exports.
+- **v0.4 — guardrails before the merge.** `model-lenz check` CI gate _(shipped: broken-reference + ambiguous-path + static indirect-table-set blow-up rules; baseline-drift comparison still to come)_ · annotation layer on sub-graph exports.
 - **Later.** DMV / XMLA mode for deployed semantic models · `.pbix` adapter · perspective-aware views · Kimball-style bus-layout auto-arrangement.
 
 > **Not on this roadmap by design:** report-layer (PBIR) measure-usage — which pages and visuals consume each measure. That's what **[PBIP Lineage Explorer](https://github.com/JonathanJihwanKim/pbip-lineage-explorer)** is for.

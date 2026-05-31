@@ -87,6 +87,77 @@ def summary(
     _print_summary(pbip_path)
 
 
+@app.command()
+def check(
+    pbip_path: Path = typer.Argument(..., exists=True, help=PBIP_PATH_HELP),
+    depth: int = typer.Option(2, "--depth", "-d", help="Relationship-walk depth."),
+    max_indirect: int | None = typer.Option(
+        None,
+        "--max-indirect",
+        help=(
+            "Fail any measure whose indirect-table count exceeds this. "
+            "Omit to disable the blow-up rule."
+        ),
+    ),
+    fail_on_ambiguous: bool = typer.Option(
+        False,
+        "--fail-on-ambiguous",
+        help="Treat ambiguous propagation paths as errors (default: warnings).",
+    ),
+    output_format: str = typer.Option("text", "--format", help="Report format: 'text' or 'json'."),
+    github: bool = typer.Option(
+        False,
+        "--github",
+        help=(
+            "Emit GitHub Actions annotations (::error/::warning). "
+            "Auto-enabled when $GITHUB_ACTIONS == 'true'."
+        ),
+    ),
+) -> None:
+    """Run CI guardrail checks over a PBIP and exit non-zero on failure.
+
+    Three rules: broken references (error), ambiguous propagation paths
+    (warning; --fail-on-ambiguous to escalate), and indirect-table blow-up
+    (error; opt in with --max-indirect). Use as a PR gate:
+
+        - name: Model Lenz check
+          run: model-lenz check path/to/pbip --max-indirect 12
+    """
+    import os
+
+    from model_lenz.analyzers.relationships import RelationshipGraph
+    from model_lenz.checks import (
+        CheckConfig,
+        render_github,
+        render_json,
+        render_text,
+        run_checks,
+    )
+
+    if output_format not in {"text", "json"}:
+        raise typer.BadParameter("--format must be 'text' or 'json'.")
+
+    model = parse_pbip(pbip_path)
+    rel_graph = RelationshipGraph.from_relationships(model.relationships)
+    config = CheckConfig(
+        depth=depth,
+        max_indirect=max_indirect,
+        fail_on_ambiguous=fail_on_ambiguous,
+    )
+    report = run_checks(model, rel_graph, config)
+
+    rendered = render_json(report) if output_format == "json" else render_text(report)
+    sys.stdout.buffer.write(rendered.encode("utf-8"))
+    sys.stdout.buffer.write(b"\n")
+
+    if (github or os.environ.get("GITHUB_ACTIONS") == "true") and report.violations:
+        annotations = render_github(report)
+        sys.stdout.buffer.write(annotations.encode("utf-8"))
+        sys.stdout.buffer.write(b"\n")
+
+    raise typer.Exit(code=report.exit_code)
+
+
 @app.command(name="version")
 def version_cmd() -> None:
     """Print the Model Lenz version."""

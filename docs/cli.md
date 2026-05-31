@@ -10,6 +10,7 @@ Usage: model-lenz [OPTIONS] COMMAND [ARGS]...
   Open-source PBIP analyzer.
 
 Commands:
+  check     Run CI guardrail checks and exit non-zero on failure.
   demo      Serve the bundled tiny demo PBIP. No path or clone needed.
   diff      Diff two PBIP folders and open a side-by-side comparison.
   inspect   Parse a PBIP and print the parsed model as JSON.
@@ -26,6 +27,32 @@ Commands:
 - **`model-lenz diff --git <base_ref> <head_ref> [--repo <path>] [--subpath <path>]`**. Same as above but BASE and HEAD are Git refs (branch / tag / SHA / `origin/main` / `HEAD~3`, etc.) resolved against `--repo` (default: current directory). Uses `git archive` so your working tree is never touched. Auto-detects the PBIP subpath when the repo root has exactly one `*.SemanticModel/` folder.
 - **`model-lenz summary <pbip>`**. Counts, classification breakdown, lineage confidence. Useful for CI.
 - **`model-lenz inspect <pbip> -o model.json`**. Full parsed model as JSON. Plug it into other tools.
+- **`model-lenz check <pbip>`**. CI guardrail. Runs three static rules over every measure and exits non-zero when an error-severity rule fires, so a PR build fails before a model regression merges.
+
+### `model-lenz check`
+
+| Rule | Severity | Fires when |
+|---|---|---|
+| `broken-references` | error (always) | A measure's DAX references a measure / column / table that doesn't resolve. |
+| `ambiguous-paths` | warning (error with `--fail-on-ambiguous`) | A measure reaches an indirect table by more than one relationship path. |
+| `indirect-blowup` | error (only with `--max-indirect N`) | A measure's indirect-table count exceeds `N`. |
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--depth / -d` | `2` | Relationship-walk depth. |
+| `--max-indirect` | _unset_ | Enable `indirect-blowup` at this threshold. Omit to disable. |
+| `--fail-on-ambiguous` | off | Escalate `ambiguous-paths` to an error. |
+| `--format` | `text` | `text` or `json`. |
+| `--github` | off | Emit `::error` / `::warning` workflow annotations. Auto-on when `$GITHUB_ACTIONS == "true"`. |
+
+Exit code is `0` when no error-severity rule fires (warnings still pass), `1` otherwise. GitHub annotations are emitted without a `file=` anchor — the parser doesn't yet track which TMDL file a measure came from, so they appear in the run log and the PR Checks summary but not inline on a diff line.
+
+```yaml
+# .github/workflows/model-lenz.yml
+- name: Model Lenz check
+  run: |
+    uvx model-lenz check path/to/MyModel.SemanticModel --max-indirect 12
+```
 
 ## Features at a glance
 
@@ -44,5 +71,6 @@ Commands:
 | **Mermaid / SVG export** | Header **Copy Mermaid** and **Download SVG** serialize the current canvas. Diff exports color both table borders and relationship arrows (green / amber / red), with removed edges dashed — needs v0.3.2+ for the edge coloring. SVG bakes in the active theme and current pan/zoom. |
 | **Theme** | Dark (default) and light themes, both with the Power BI gold gradient as the brand accent. Theme switch lives in a labeled `Dark / Light` control next to `Hops` in the header. |
 | **Switch PBIPs in-app** | Header **Open…** button swaps the active PBIP at runtime — no server restart. Previously loaded PBIPs stay cached so toggling back is instant. |
+| **CI guardrail** | `model-lenz check <pbip>` fails a PR build on broken references, ambiguous propagation paths (opt-in error), or an indirect-table blow-up past `--max-indirect`. Text / JSON output plus GitHub Actions annotations. |
 | **Distribution** | Single Python wheel. Install via `uv tool install model-lenz` (recommended) or `pipx install model-lenz`. Frontend bundle is included; no Node required at install time. |
 | **Read-only** | Model Lenz never modifies your PBIP files. |

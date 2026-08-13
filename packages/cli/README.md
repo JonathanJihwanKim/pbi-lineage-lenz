@@ -1,9 +1,11 @@
 # pbi-lineage-lenz
 
-One lens on your Power BI model — for the BI developer **and** the data engineer.
+**Find the lineage. Understand the model. Document both.** For the BI developer **and** the
+data engineer.
 
-Point it at a PBIP folder and get a single self-contained HTML file that opens in any
-browser, with no Power BI, no project folder and no install on the far end.
+Point it at a PBIP folder and get documentation you can commit, or a single self-contained
+HTML file that opens in any browser — with no Power BI, no project folder and no install on
+the far end.
 
 **[See a live example](https://jonathanjihwankim.github.io/pbi-lineage-lenz/demo.html)** —
 a real model in your browser, nothing to download.

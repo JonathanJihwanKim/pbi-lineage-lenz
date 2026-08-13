@@ -1,7 +1,10 @@
 # PBI Lineage Lenz
 
-**Trace any number on a Power BI report back to the physical column it came from — and
-send the whole picture to someone who has never opened Power BI.**
+**Find the lineage. Understand the model. Document both.**
+
+Trace any number on a Power BI report back to the physical column it came from, read a
+model you did not build, and generate documentation that cannot go stale — then send the
+whole picture, as one HTML file, to someone who has never opened Power BI.
 
 [**▶ See a live example**](https://jonathanjihwankim.github.io/pbi-lineage-lenz/demo.html) —
 a real model, in your browser, nothing to install.

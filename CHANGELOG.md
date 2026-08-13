@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 — `pbi-lineage-lenz` only
+
+No behaviour change. The package page led with lineage and the handoff file, and mentioned
+documentation only in passing — but generating documentation is one of the three things
+this tool exists to do, and a reader could finish the page without learning that `docs`
+exists. The README and description now say so.
+
 ## 1.0.0
 
 First release. Consolidates three earlier tools —

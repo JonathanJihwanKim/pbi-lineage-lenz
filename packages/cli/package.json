@@ -1,7 +1,7 @@
 {
   "name": "pbi-lineage-lenz",
-  "version": "1.0.0",
-  "description": "Trace Power BI lineage from physical source columns to report visuals. Build a self-contained handoff file, gate CI on broken references, and describe what changed between two git refs.",
+  "version": "1.0.1",
+  "description": "Find the lineage, understand the model, document both. Trace Power BI columns from physical source to report visual, generate documentation that cannot go stale, build a self-contained handoff file, and gate CI on broken references.",
   "type": "module",
   "bin": {
     "pbi-lineage-lenz": "src/bin.js"

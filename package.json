@@ -1,7 +1,7 @@
 {
   "name": "pbi-lineage-lenz",
   "version": "1.0.0",
-  "description": "One lens on your Power BI model — for the BI developer and the data engineer. Trace lineage, generate docs, and hand off a single self-contained HTML file that opens in any browser.",
+  "description": "Find the lineage, understand the model, document both. For the BI developer and the data engineer: trace every column to its physical source, generate documentation that cannot go stale, and hand it over as one self-contained HTML file.",
   "type": "module",
   "private": true,
   "workspaces": [

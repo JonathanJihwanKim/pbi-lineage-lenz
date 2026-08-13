@@ -2,7 +2,7 @@
 
 ## Our pledge
 
-We as contributors and maintainers pledge to make participation in Model Lenz a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, gender identity and expression, level of experience, nationality, personal appearance, race, religion, or sexual identity and orientation.
+We as contributors and maintainers pledge to make participation in PBI Lineage Lenz a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, gender identity and expression, level of experience, nationality, personal appearance, race, religion, or sexual identity and orientation.
 
 ## Standards
 
@@ -24,7 +24,9 @@ Examples of unacceptable behavior:
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by opening a confidential issue marked `[CoC]` or by emailing the maintainer listed in `pyproject.toml`. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by
+emailing **jonathan.jihwankim@gmail.com**. All complaints will be reviewed and investigated
+promptly and fairly, and the reporter's identity will be kept confidential.
 
 ## Attribution
 

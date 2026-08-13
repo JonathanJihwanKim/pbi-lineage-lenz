@@ -1,0 +1,112 @@
+table store
+	lineageTag: 61c2b53a-f159-4939-a34e-12da98edcfb0
+
+	column StoreKey
+		dataType: int64
+		formatString: 0
+		lineageTag: e896a721-c90f-48b9-a011-227df0c535d8
+		summarizeBy: none
+		sourceColumn: StoreKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column StoreCode
+		dataType: int64
+		formatString: 0
+		lineageTag: 8be90fec-b907-49cb-80ba-c65164fbef99
+		summarizeBy: count
+		sourceColumn: StoreCode
+
+		annotation SummarizationSetBy = Automatic
+
+	column GeoAreaKey
+		dataType: int64
+		formatString: 0
+		lineageTag: b797016a-4b8a-49a8-b1ae-19efafd9a41c
+		summarizeBy: count
+		sourceColumn: GeoAreaKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column CountryCode
+		dataType: string
+		lineageTag: 09a6eb08-4f5c-44ef-9d50-99a136a1fbc3
+		summarizeBy: none
+		sourceColumn: CountryCode
+
+		annotation SummarizationSetBy = Automatic
+
+	column CountryName
+		dataType: string
+		lineageTag: 1f50061c-24e8-4c73-8dda-cfba438aa1b2
+		summarizeBy: none
+		sourceColumn: CountryName
+
+		annotation SummarizationSetBy = Automatic
+
+	column State
+		dataType: string
+		lineageTag: 2f397ec9-b518-46e1-a00e-55b5460c0930
+		summarizeBy: none
+		sourceColumn: State
+
+		annotation SummarizationSetBy = Automatic
+
+	column OpenDate
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: a6388da1-9ef4-4fe8-aea1-ae79dd88fbfb
+		summarizeBy: none
+		sourceColumn: OpenDate
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column CloseDate
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: e02d16cb-ec23-4ae6-8a7e-652db8918fd3
+		summarizeBy: none
+		sourceColumn: CloseDate
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Description
+		dataType: string
+		lineageTag: ada6a9a8-e9e3-4fe6-9ce7-0d67230146d9
+		summarizeBy: none
+		sourceColumn: Description
+
+		annotation SummarizationSetBy = Automatic
+
+	column SquareMeters
+		dataType: int64
+		formatString: 0
+		lineageTag: 4e82116c-d4de-4fad-b2b7-f47bc8dd75a0
+		summarizeBy: sum
+		sourceColumn: SquareMeters
+
+		annotation SummarizationSetBy = Automatic
+
+	column Status
+		dataType: string
+		lineageTag: 57bb9eff-6bf9-4dd2-ae2c-5042ba9a9b29
+		summarizeBy: none
+		sourceColumn: Status
+
+		annotation SummarizationSetBy = Automatic
+
+	partition store = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database("contoso-lakehouse.datawarehouse.fabric.microsoft.com", "Lakehouse_Contoso"),
+				    dbo_customer = Source{[Schema="dbo",Item="store"]}[Data]
+				in
+				    dbo_customer
+
+	annotation PBI_ResultType = Table
+

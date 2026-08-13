@@ -1,0 +1,47 @@
+{
+  "name": "pbi-lineage-lenz",
+  "version": "1.0.0",
+  "description": "Trace Power BI lineage from physical source columns to report visuals. Build a self-contained handoff file, gate CI on broken references, and describe what changed between two git refs.",
+  "type": "module",
+  "bin": {
+    "pbi-lineage-lenz": "src/bin.js"
+  },
+  "main": "src/cli.js",
+  "exports": {
+    ".": "./src/cli.js",
+    "./checks": "./src/checks.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "src/",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@pbi-lineage-lenz/core": "1.0.0",
+    "@pbi-lineage-lenz/export": "1.0.0",
+    "@pbi-lineage-lenz/handoff": "1.0.0",
+    "@pbi-lineage-lenz/viewer": "1.0.0"
+  },
+  "keywords": [
+    "power-bi",
+    "pbip",
+    "pbir",
+    "tmdl",
+    "dax",
+    "lineage",
+    "data-lineage",
+    "documentation",
+    "ci",
+    "fabric"
+  ],
+  "license": "MIT",
+  "author": "Jihwan Kim",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanJihwanKim/pbi-lineage-lenz.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/JonathanJihwanKim/pbi-lineage-lenz#readme"
+}

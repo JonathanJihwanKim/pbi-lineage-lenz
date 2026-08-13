@@ -1,0 +1,168 @@
+table sales
+	lineageTag: c5563bcc-daf3-4732-9b32-c31905dd048f
+	sourceLineageTag: [dbo].[sales]
+
+	measure 'Sales Amount' = SUMX ( 'sales', 'sales'[Quantity] * 'sales'[NetPrice] )
+		formatString: \$#,0
+		lineageTag: a1111111-1111-4111-8111-111111111111
+
+	measure 'Total Cost' = SUMX ( 'sales', 'sales'[Quantity] * 'sales'[UnitCost] )
+		formatString: \$#,0
+		lineageTag: a2222222-2222-4222-8222-222222222222
+
+	measure 'Gross Margin' = [Sales Amount] - [Total Cost]
+		formatString: \$#,0
+		lineageTag: a3333333-3333-4333-8333-333333333333
+
+	measure 'Gross Margin %' = DIVIDE ( [Gross Margin], [Sales Amount] )
+		formatString: 0.0%
+		lineageTag: a4444444-4444-4444-8444-444444444444
+
+	measure 'Total Quantity' = SUM ( 'sales'[Quantity] )
+		formatString: #,0
+		lineageTag: a5555555-5555-4555-8555-555555555555
+
+	measure 'Order Count' = DISTINCTCOUNT ( 'sales'[OrderKey] )
+		formatString: #,0
+		lineageTag: a6666666-6666-4666-8666-666666666666
+
+	column OrderKey
+		dataType: int64
+		formatString: 0
+		lineageTag: 3e63da03-b2c1-4825-8bb5-8017356adf0a
+		sourceLineageTag: OrderKey
+		summarizeBy: count
+		sourceColumn: OrderKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column LineNumber
+		dataType: int64
+		formatString: 0
+		lineageTag: d05cfb07-7e82-4d00-8e6f-2ee3902666b0
+		sourceLineageTag: LineNumber
+		summarizeBy: sum
+		sourceColumn: LineNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column OrderDate
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: f0141449-7e13-47fe-abde-208da33db4ce
+		sourceLineageTag: OrderDate
+		summarizeBy: none
+		sourceColumn: OrderDate
+
+		annotation SummarizationSetBy = Automatic
+
+	column DeliveryDate
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 0052260e-d387-4768-88d4-4ce831617720
+		sourceLineageTag: DeliveryDate
+		summarizeBy: none
+		sourceColumn: DeliveryDate
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerKey
+		dataType: int64
+		formatString: 0
+		lineageTag: 435a08cf-b90b-4037-805b-14456a82fe15
+		sourceLineageTag: CustomerKey
+		summarizeBy: none
+		sourceColumn: CustomerKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column StoreKey
+		dataType: int64
+		formatString: 0
+		lineageTag: 707b85c7-b156-4641-a6ca-225390712e75
+		sourceLineageTag: StoreKey
+		summarizeBy: none
+		sourceColumn: StoreKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductKey
+		dataType: int64
+		formatString: 0
+		lineageTag: 7d4fde82-406c-41d6-a19e-dae915b19eec
+		sourceLineageTag: ProductKey
+		summarizeBy: none
+		sourceColumn: ProductKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column Quantity
+		dataType: int64
+		formatString: 0
+		lineageTag: 2c375459-6eea-48c3-a66c-ce1419783b8e
+		sourceLineageTag: Quantity
+		summarizeBy: sum
+		sourceColumn: Quantity
+
+		annotation SummarizationSetBy = Automatic
+
+	column UnitPrice
+		dataType: double
+		lineageTag: 87b7b835-8389-47c6-8887-94e3d3ec77f2
+		sourceLineageTag: UnitPrice
+		summarizeBy: sum
+		sourceColumn: UnitPrice
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column NetPrice
+		dataType: double
+		lineageTag: 4a796b50-1285-48bc-8660-492a1bc6f3ee
+		sourceLineageTag: NetPrice
+		summarizeBy: sum
+		sourceColumn: NetPrice
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column UnitCost
+		dataType: double
+		lineageTag: 7201341d-63d7-493d-aba9-5a704ca3b6a7
+		sourceLineageTag: UnitCost
+		summarizeBy: sum
+		sourceColumn: UnitCost
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column CurrencyCode
+		dataType: string
+		lineageTag: 3f160f33-25fa-4581-b945-e9b82264e30f
+		sourceLineageTag: CurrencyCode
+		summarizeBy: none
+		sourceColumn: CurrencyCode
+
+		annotation SummarizationSetBy = Automatic
+
+	column ExchangeRate
+		dataType: double
+		lineageTag: 38d31a6a-0b54-4649-9550-3a32977b9dd4
+		sourceLineageTag: ExchangeRate
+		summarizeBy: sum
+		sourceColumn: ExchangeRate
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition sales = entity
+		mode: directLake
+		source
+			entityName: sales
+			schemaName: dbo
+			expressionSource: 'DirectLake - Lakehouse_Contoso'
+

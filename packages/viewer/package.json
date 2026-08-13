@@ -1,0 +1,34 @@
+{
+  "name": "@pbi-lineage-lenz/viewer",
+  "version": "1.0.0",
+  "description": "Read-only UI for a parsed Power BI model — lineage graph, measure catalog, and dual-name source map. No file I/O, so the same components render live in the browser and frozen inside a handoff file.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./viewer.css": "./src/viewer.css"
+  },
+  "files": [
+    "src/",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@pbi-lineage-lenz/core": "1.0.0"
+  },
+  "license": "MIT",
+  "author": "Jihwan Kim",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanJihwanKim/pbi-lineage-lenz.git",
+    "directory": "packages/viewer"
+  },
+  "homepage": "https://github.com/JonathanJihwanKim/pbi-lineage-lenz#readme",
+  "keywords": [
+    "power-bi",
+    "pbip",
+    "lineage",
+    "viewer",
+    "source-map",
+    "semantic-model"
+  ]
+}

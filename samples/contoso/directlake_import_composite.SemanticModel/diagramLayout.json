@@ -1,0 +1,113 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 1161.5168755104057,
+            "y": 0
+          },
+          "nodeIndex": "sales",
+          "nodeLineageTag": "c5563bcc-daf3-4732-9b32-c31905dd048f",
+          "size": {
+            "height": 593.39916945996958,
+            "width": 234
+          },
+          "zIndex": 5
+        },
+        {
+          "location": {
+            "x": 784.88343816983854,
+            "y": 0
+          },
+          "nodeIndex": "customer",
+          "nodeLineageTag": "7eb47ff7-8136-4491-bc96-01584d914b6a",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 1
+        },
+        {
+          "location": {
+            "x": 0,
+            "y": 0
+          },
+          "nodeIndex": "date",
+          "nodeLineageTag": "e0ee9467-0efe-4c5b-be0f-3f2f0749cb78",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 2
+        },
+        {
+          "location": {
+            "x": 267.53097103497095,
+            "y": 0
+          },
+          "nodeIndex": "product",
+          "nodeLineageTag": "aa6e8cde-0e32-4056-8559-5dc82d1fe6a0",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 3
+        },
+        {
+          "location": {
+            "x": 527.96477268477258,
+            "y": 0
+          },
+          "nodeIndex": "store",
+          "nodeLineageTag": "61c2b53a-f159-4939-a34e-12da98edcfb0",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 4
+        },
+        {
+          "location": {
+            "x": 330.15779372221618,
+            "y": 665.31821829546163
+          },
+          "nodeIndex": "Monthly Sales Summary",
+          "nodeLineageTag": "3f9d2b18-5c4e-42a7-8e6f-1a2b3c4d5e6f",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 0,
+            "y": 659.23996716855049
+          },
+          "nodeIndex": "Margin Tier by customer",
+          "nodeLineageTag": "48e7b3c9-2184-408e-9ede-bae696b45b0a",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 0
+        }
+      ],
+      "name": "All tables",
+      "zoomValue": 65.808403050183713,
+      "pinKeyFieldsToTop": true,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "All tables",
+  "defaultDiagram": "All tables"
+}

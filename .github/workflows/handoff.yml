@@ -1,0 +1,110 @@
+# Build a handoff file on every pull request that touches the model, and say what
+# changed. This is the data-engineer ↔ BI-developer loop, automated: a reviewer with no
+# Power BI installed gets a readable artifact and a plain-language summary attached to
+# the PR itself.
+#
+# Copy this into your own repository holding a PBIP project and set PROJECT_PATH.
+name: Model handoff
+
+on:
+  pull_request:
+    paths:
+      - '**/*.tmdl'
+      - '**/*.pbir'
+      - '**/*.json'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  PROJECT_PATH: .
+
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `diff` needs the base commit to compare against, and the default shallow
+          # clone does not have it.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The gate. Exits 1 on a broken reference — a measure reading a column that no
+      # longer exists — and reports everything else without failing.
+      - name: Check the model
+        run: npx --yes pbi-lineage-lenz check "$PROJECT_PATH"
+
+      - name: Build the handoff file
+        run: npx --yes pbi-lineage-lenz handoff "$PROJECT_PATH" -o handoff.html
+
+      - name: Describe what changed
+        id: diff
+        run: |
+          {
+            echo 'summary<<HANDOFF_EOF'
+            npx --yes pbi-lineage-lenz diff \
+              "origin/${{ github.base_ref }}..${{ github.sha }}" "$PROJECT_PATH" \
+              || echo '_Could not compare against the base branch._'
+            echo 'HANDOFF_EOF'
+          } >> "$GITHUB_OUTPUT"
+        env:
+          NO_COLOR: '1'
+
+      - uses: actions/upload-artifact@v4
+        id: upload
+        with:
+          name: handoff
+          path: handoff.html
+
+      # One comment, updated in place. A new comment per push buries the conversation.
+      - name: Comment on the pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- pbi-lineage-lenz -->';
+            const body = [
+              marker,
+              '### Model handoff',
+              '',
+              'A self-contained HTML file for this branch is attached to this run. It opens in any',
+              'browser with no Power BI and no project folder — send it to whoever asks where a',
+              'number comes from.',
+              '',
+              `**[Download handoff.html](${{ steps.upload.outputs.artifact-url }})**`,
+              '',
+              '<details><summary>What changed about the model</summary>',
+              '',
+              '```',
+              `${{ toJSON(steps.diff.outputs.summary) }}`.slice(1, -1).replace(/\\n/g, '\n'),
+              '```',
+              '',
+              '</details>',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((comment) => comment.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

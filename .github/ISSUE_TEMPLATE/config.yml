@@ -1,5 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Question / discussion
-    url: https://github.com/JonathanJihwanKim/pbip_model_lenz/discussions
-    about: For open-ended questions or design discussion, please use Discussions instead of an issue.
+  - name: See a live example first
+    url: https://jonathanjihwankim.github.io/pbi-lineage-lenz/demo.html
+    about: A real model in your browser — often the fastest way to tell whether what you are seeing is a bug or the tool being honest about a gap.
+  - name: What the confidence labels mean
+    url: https://github.com/JonathanJihwanKim/pbi-lineage-lenz#reading-the-confidence-labels
+    about: "`unknown` is often the correct answer rather than a failure. Worth a look before filing."
+  - name: Sponsor this project
+    url: https://github.com/sponsors/JonathanJihwanKim
+    about: Free forever, maintained by one person. Sponsorship buys triage priority and roadmap input — never features.

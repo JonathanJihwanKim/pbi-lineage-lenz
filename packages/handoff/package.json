@@ -1,0 +1,35 @@
+{
+  "name": "@pbi-lineage-lenz/handoff",
+  "version": "1.0.0",
+  "description": "Build a single self-contained HTML file from a parsed Power BI model — opens in any browser with no Power BI, no PBIP folder, and no network access.",
+  "type": "module",
+  "main": "src/build.js",
+  "exports": {
+    ".": "./src/build.js",
+    "./template": "./src/template.js",
+    "./assets": "./src/assets.js"
+  },
+  "files": [
+    "src/",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@pbi-lineage-lenz/viewer": "1.0.0",
+    "esbuild": "^0.24.0"
+  },
+  "license": "MIT",
+  "author": "Jihwan Kim",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanJihwanKim/pbi-lineage-lenz.git",
+    "directory": "packages/handoff"
+  },
+  "keywords": [
+    "power-bi",
+    "pbip",
+    "handoff",
+    "documentation",
+    "self-contained-html"
+  ],
+  "homepage": "https://github.com/JonathanJihwanKim/pbi-lineage-lenz#readme"
+}

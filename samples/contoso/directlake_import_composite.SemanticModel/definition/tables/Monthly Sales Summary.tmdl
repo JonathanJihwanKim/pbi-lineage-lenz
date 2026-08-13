@@ -1,0 +1,52 @@
+table 'Monthly Sales Summary'
+	lineageTag: 3f9d2b18-5c4e-42a7-8e6f-1a2b3c4d5e6f
+
+	column Revenue
+		dataType: double
+		lineageTag: 6c3d4e5f-8091-4b2c-9d3e-4f5a6b7c8d9e
+		summarizeBy: sum
+		sourceColumn: [Revenue]
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Gross Margin %'
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 7d4e5f60-91a2-4c3d-8e4f-5a6b7c8d9e0f
+		summarizeBy: none
+		sourceColumn: [Gross Margin %]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Orders
+		dataType: int64
+		formatString: 0
+		lineageTag: 8e5f6071-a2b3-4d4e-9f50-6b7c8d9e0f10
+		summarizeBy: sum
+		sourceColumn: [Orders]
+
+		annotation SummarizationSetBy = Automatic
+
+	column YearMonthNumber
+		lineageTag: 5009d3cd-2318-418b-ba81-2293ff883cec
+		isNameInferred
+		sourceColumn: date[YearMonthNumber]
+
+	column YearMonth
+		lineageTag: 3b0c8b51-ce3f-4d83-86a4-7e783c290712
+		isNameInferred
+		sourceColumn: date[YearMonth]
+
+	partition 'Monthly Sales Summary' = calculated
+		mode: import
+		source =
+				SUMMARIZECOLUMNS (
+				    'date'[YearMonthNumber],
+				    'date'[YearMonth],
+				    "Revenue", [Sales Amount],
+				    "Gross Margin %", [Gross Margin %],
+				    "Orders", [Order Count]
+				)
+
+	annotation PBI_ResultType = Table
+

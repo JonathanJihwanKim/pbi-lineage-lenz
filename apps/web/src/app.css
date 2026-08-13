@@ -1,0 +1,273 @@
+/**
+ * Web app chrome — the landing screen and the loading state.
+ *
+ * Everything after the folder is picked is styled by `viewer.css`, which the handoff file
+ * also ships. This stylesheet covers only the part a handoff file has no use for, so it
+ * stays small and never leaks into the exported artifact.
+ */
+
+.app-landing {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: clamp(24px, 7vh, 88px) 20px 32px;
+}
+
+.landing {
+  width: 100%;
+  max-width: 940px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+/* The tagline is a sibling of the wordmark rather than a wrapping flex item.
+   As a flex item it would never wrap: `flex-basis: 100%` is clamped by the
+   `max-width` that keeps the line readable, and the clamped size is what flex
+   uses to decide line breaks — so it sat beside the wordmark at every width
+   wide enough to matter. */
+.landing-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.landing-mark {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+.landing-mark b { font-weight: 600; color: var(--ink); }
+.landing-mark .lens {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  position: relative;
+  transform: translateY(2px);
+}
+.landing-mark .lens::after {
+  content: "";
+  position: absolute;
+  inset: 3px 3px auto auto;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.landing-tag {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  letter-spacing: 0;
+  max-width: 60ch;
+}
+
+.landing-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.btn.big {
+  padding: 11px 20px;
+  font-size: 13px;
+}
+
+.landing-note {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 72ch;
+  padding-left: 13px;
+  border-left: 2px solid var(--rule-strong);
+}
+
+.landing-cards {
+  display: grid;
+  /* Collapses to one column well before it gets cramped — three 200px columns of
+     prose is unreadable long before the layout technically breaks. */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.landing-card {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 16px 17px;
+  box-shadow: var(--shadow-panel);
+}
+.landing-card b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 9px;
+}
+.landing-card p {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.62;
+  color: var(--ink-2);
+}
+
+.landing-hand {
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--raised);
+  padding: 16px 18px;
+}
+.landing-hand b {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.landing-hand p {
+  margin: 8px 0 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.62;
+  color: var(--ink-2);
+  max-width: 78ch;
+}
+
+.notice {
+  border-radius: var(--radius);
+  padding: 13px 15px;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.notice b { display: block; font-family: var(--mono); font-size: 12px; margin-bottom: 6px; }
+.notice p { margin: 0; color: var(--ink-2); }
+.notice-warn { background: var(--inferred-bg); border: 1px solid var(--inferred); color: var(--ink); }
+.notice-error { background: var(--accent-glow); border: 1px solid var(--accent-dim); color: var(--ink); }
+
+/* ------------------------------------------------------------- loading -- */
+
+.app-busy {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.busy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.busy-bar {
+  width: 200px;
+  height: 2px;
+  background: var(--rule);
+  overflow: hidden;
+  position: relative;
+}
+.busy-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--accent);
+  animation: sweep 1100ms var(--ease) infinite;
+}
+@keyframes sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .busy-bar::after { animation: none; width: 100%; opacity: 0.5; }
+}
+
+.busy-detail {
+  font-size: 11px;
+  color: var(--ink-3);
+  letter-spacing: 0.06em;
+  min-height: 1em;
+}
+
+/* -------------------------------------------------------------- export -- */
+
+.export-status {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  max-width: 42ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.export-status.warn { color: var(--inferred); }
+
+/* -------------------------------------------------- the one ask -------- */
+/* Sits in a corner, never over anything, and leaves on its own. */
+
+.value-moment {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 40;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 15px 34px 15px 16px;
+  background: var(--panel);
+  border: 1px solid var(--rule-strong);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-panel);
+  animation: value-in 320ms var(--ease) both;
+}
+
+@keyframes value-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .value-moment { animation: none; }
+}
+
+.value-body {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.value-body b {
+  font-family: var(--mono);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.value-actions { display: flex; gap: 8px; }
+.value-actions .btn { text-decoration: none; }
+
+.value-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  background: none;
+  border: 0;
+  padding: 2px 6px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink-4);
+  cursor: pointer;
+}
+.value-dismiss:hover { color: var(--ink-2); }

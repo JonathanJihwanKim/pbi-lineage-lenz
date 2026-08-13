@@ -1,0 +1,20 @@
+relationship e1e73f87-7934-d364-4b44-e33446bb5a49
+	fromColumn: sales.StoreKey
+	toColumn: store.StoreKey
+
+relationship 1a068b24-f581-1872-e9dc-f19a3c71db8d
+	fromColumn: sales.ProductKey
+	toColumn: product.ProductKey
+
+relationship 7e20783f-50c1-c115-5580-199dcec80473
+	fromColumn: sales.CustomerKey
+	toColumn: customer.CustomerKey
+
+relationship 3c987976-9a25-468a-faab-d0f6e8cc331a
+	fromColumn: sales.OrderDate
+	toColumn: date.Date
+
+relationship 2400dbd8-1ff1-8759-4f2a-0d3cb8efc0a4
+	fromColumn: 'Margin Tier by customer'.OrderDate
+	toColumn: date.Date
+

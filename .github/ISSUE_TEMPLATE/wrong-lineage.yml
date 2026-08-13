@@ -1,0 +1,104 @@
+name: The lineage is wrong
+description: The tool showed a source, confidence or relationship that does not match your model
+labels: ["lineage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most valuable kind of report. Every serious bug in this project was
+        found by pointing it at a model nobody had tried before — never by reading the
+        code, and never by the synthetic tests, which were green throughout.
+
+        You do not need to diagnose it. Showing what the model says and what the tool said
+        is enough.
+
+  - type: input
+    id: shown
+    attributes:
+      label: What the tool showed
+      description: The row, path or label you disagree with.
+      placeholder: "customer[CustomerKey] → Lakehouse_Contoso.dbo.customer.CustomerKey · exact"
+    validations:
+      required: true
+
+  - type: input
+    id: expected
+    attributes:
+      label: What it should have shown
+      placeholder: "dbo.dim_customer.customer_id — the M renames it in a step the tool seems to miss"
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: The relevant part of your model
+      description: |
+        The TMDL for the table or partition, the M expression, or the `visual.json`
+        fragment. Rename anything internal — the shape is what matters, not your names.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: storage
+    attributes:
+      label: How does the table get its data?
+      description: Storage mode changes which code path runs, and it is the first thing worth knowing.
+      options:
+        - Import via Power Query (M)
+        - Direct Lake (a `= entity` partition)
+        - DirectQuery
+        - A calculated table (DAX)
+        - A field parameter
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: connector
+    attributes:
+      label: What is behind it?
+      options:
+        - Fabric Lakehouse or Warehouse
+        - SQL Server or Azure SQL
+        - Google BigQuery
+        - Snowflake
+        - Databricks
+        - A file (Excel, CSV, folder)
+        - Something else
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: folder
+    attributes:
+      label: How is your project folder laid out?
+      description: |
+        Especially useful when the *wrong model* was picked. One report and one model side
+        by side is the simple case; several of each in one folder — a Fabric workspace
+        synced to git — is where pairing gets decided by `definition.pbir`.
+      placeholder: |
+        MyProject/
+          Sales.Report/
+          Sales.SemanticModel/
+          Shared.SemanticModel/
+      render: text
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`npx pbi-lineage-lenz --version`, or the date shown in the app header."
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: sanitised
+    attributes:
+      label: Before you post
+      options:
+        - label: I have removed server hostnames, workspace GUIDs and anything else internal from the snippets above.
+          required: true

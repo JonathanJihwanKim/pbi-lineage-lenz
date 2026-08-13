@@ -1,0 +1,143 @@
+table product
+	lineageTag: aa6e8cde-0e32-4056-8559-5dc82d1fe6a0
+
+	column ProductKey
+		dataType: int64
+		formatString: 0
+		lineageTag: d9841559-3b05-4072-be38-67797d42f1a6
+		summarizeBy: none
+		sourceColumn: ProductKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductCode
+		dataType: int64
+		formatString: 0
+		lineageTag: 60126c6e-0bd8-49eb-a07d-f558912ab360
+		summarizeBy: none
+		sourceColumn: ProductCode
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductName
+		dataType: string
+		lineageTag: bd41356a-4b31-43bc-a300-6b4b689cd144
+		summarizeBy: none
+		sourceColumn: ProductName
+
+		annotation SummarizationSetBy = Automatic
+
+	column Manufacturer
+		dataType: string
+		lineageTag: 27d06da1-5946-429b-918e-45d5715296f0
+		summarizeBy: none
+		sourceColumn: Manufacturer
+
+		annotation SummarizationSetBy = Automatic
+
+	column Brand
+		dataType: string
+		lineageTag: c5645eb3-3831-4249-a1ac-1a3636f5d829
+		summarizeBy: none
+		sourceColumn: Brand
+
+		annotation SummarizationSetBy = Automatic
+
+	column Color
+		dataType: string
+		lineageTag: 4af87d7a-5db8-4040-93e8-567cfcc12221
+		summarizeBy: none
+		sourceColumn: Color
+
+		annotation SummarizationSetBy = Automatic
+
+	column WeightUnit
+		dataType: string
+		lineageTag: de6c4829-bf55-4f67-bee8-3be602c7acff
+		summarizeBy: none
+		sourceColumn: WeightUnit
+
+		annotation SummarizationSetBy = Automatic
+
+	column Weight
+		dataType: double
+		lineageTag: c24df9a3-8a77-4e96-9616-7ddb87454533
+		summarizeBy: none
+		sourceColumn: Weight
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Cost
+		dataType: double
+		lineageTag: dcadf722-1927-491d-8088-ba6c68097471
+		summarizeBy: none
+		sourceColumn: Cost
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Price
+		dataType: double
+		lineageTag: 59b80848-94b4-4435-ac49-ef176bbd0680
+		summarizeBy: none
+		sourceColumn: Price
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column CategoryKey
+		dataType: int64
+		formatString: 0
+		lineageTag: 9a6503e5-5eed-4a2e-9b7b-3402d99aca18
+		summarizeBy: none
+		sourceColumn: CategoryKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column CategoryName
+		dataType: string
+		lineageTag: 11a09c23-e09b-4f80-98f9-0aa7a497345c
+		summarizeBy: none
+		sourceColumn: CategoryName
+
+		annotation SummarizationSetBy = Automatic
+
+	column SubCategoryKey
+		dataType: int64
+		formatString: 0
+		lineageTag: 05bca19c-9c8f-465f-ba9b-66eca4abbb68
+		summarizeBy: none
+		sourceColumn: SubCategoryKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column SubCategoryName
+		dataType: string
+		lineageTag: 95ab3380-2814-40c0-99ab-b13ee47781c5
+		summarizeBy: none
+		sourceColumn: SubCategoryName
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Margin Tier' = SWITCH ( TRUE (), DIVIDE ( 'product'[Price] - 'product'[Cost], 'product'[Price] ) >= 0.5, "High Margin", DIVIDE ( 'product'[Price] - 'product'[Cost], 'product'[Price] ) >= 0.3, "Mid Margin", "Low Margin" )
+		dataType: string
+		lineageTag: 7c2a1e94-8b6d-4f3a-9c21-3d5e8a0b1f77
+		summarizeBy: none
+
+		annotation SummarizationSetBy = Automatic
+
+	partition product = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database("contoso-lakehouse.datawarehouse.fabric.microsoft.com", "Lakehouse_Contoso"),
+				    dbo_customer = Source{[Schema="dbo",Item="product"]}[Data]
+				in
+				    dbo_customer
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
+  "name": "a1b2c3d4e5f60718293a",
+  "position": {
+    "x": 19.949622166246851,
+    "y": 16.322418136020151,
+    "z": 0,
+    "height": 48.060453400503775,
+    "width": 900.45340050377831,
+    "tabOrder": 0
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Contoso Sales Overview",
+                    "textStyle": {
+                      "fontWeight": "bold",
+                      "fontSize": "24px",
+                      "color": "#252423"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

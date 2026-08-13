@@ -1,0 +1,41 @@
+table 'Margin Tier by customer'
+	lineageTag: 48e7b3c9-2184-408e-9ede-bae696b45b0a
+
+	measure 'Customer Count' = COUNTROWS(VALUES('Margin Tier by customer'[CustomerKey]))
+		formatString: #,0
+		lineageTag: 9cb4ad12-e4b2-4373-91fc-d7a13718e572
+
+	column OrderDate
+		formatString: General Date
+		lineageTag: fd92ab53-bf07-49cd-8a32-14cc7feda9c9
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: sales[OrderDate]
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerKey
+		formatString: 0
+		lineageTag: bb599638-f8a7-4af8-addf-50ae0964b708
+		summarizeBy: count
+		isNameInferred
+		sourceColumn: sales[CustomerKey]
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Margin Tier'
+		lineageTag: a7d331ef-3b46-4f17-ac4c-b85a9f3f3417
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Margin Tier]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Margin Tier by customer' = calculated
+		mode: import
+		source =
+				
+				SUMMARIZECOLUMNS( sales[OrderDate], sales[CustomerKey], "Margin Tier", SWITCH ( TRUE (), [Gross Margin %] = 0.5, "High Margin", [Gross Margin %] >= 0.3, "Mid Margin", "Low Margin" ))
+
+	annotation PBI_Id = c18fc3d578f940b7b3b8b2bd5093e53c
+

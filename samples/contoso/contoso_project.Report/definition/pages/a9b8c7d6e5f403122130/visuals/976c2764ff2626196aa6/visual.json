@@ -1,0 +1,139 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
+  "name": "976c2764ff2626196aa6",
+  "position": {
+    "x": 20,
+    "y": 470,
+    "z": 2,
+    "height": 250,
+    "width": 600,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "pivotTable",
+    "query": {
+      "queryState": {
+        "Columns": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Margin Tier by customer"
+                    }
+                  },
+                  "Property": "Margin Tier"
+                }
+              },
+              "queryRef": "Margin Tier by customer.Margin Tier",
+              "nativeQueryRef": "Margin Tier",
+              "active": true
+            }
+          ]
+        },
+        "Rows": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "date"
+                    }
+                  },
+                  "Property": "YearMonthShort"
+                }
+              },
+              "queryRef": "date.YearMonthShort",
+              "nativeQueryRef": "YearMonthShort",
+              "active": true
+            }
+          ]
+        },
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Margin Tier by customer"
+                    }
+                  },
+                  "Property": "Customer Count"
+                }
+              },
+              "queryRef": "Margin Tier by customer.Customer Count",
+              "nativeQueryRef": "Customer Count"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "date"
+                  }
+                },
+                "Property": "YearMonthShort"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ]
+      }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "03554625f6b6f000c6e3",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "date"
+              }
+            },
+            "Property": "YearMonthShort"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "45b22443bbca168cebcd",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Margin Tier by customer"
+              }
+            },
+            "Property": "Customer Count"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "ebf077da1ff395359033",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Margin Tier by customer"
+              }
+            },
+            "Property": "Margin Tier"
+          }
+        },
+        "type": "Categorical"
+      }
+    ]
+  }
+}

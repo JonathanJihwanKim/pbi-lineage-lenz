@@ -1,135 +1,110 @@
+# Tests on every push and pull request.
+#
+# `pages.yml` also runs the suite, but only on `main` and only as a gate on deploying —
+# by then a bad change is already merged. This is the one that runs on a pull request.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  python:
-    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
+  test:
+    name: Node ${{ matrix.node }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        # Windows is not paranoia: this tool reads paths out of `definition.pbir` and
+        # walks folder names, and most people author PBIP on Windows. A separator bug
+        # would pass every Linux run and break the primary platform.
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        node: [20, 22]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          node-version: ${{ matrix.node }}
+          cache: npm
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
+      - run: npm ci
 
-      - name: Stage placeholder frontend_dist (tests don't need a real bundle)
-        shell: bash
-        run: |
-          mkdir -p src/model_lenz/frontend_dist
-          echo "<!-- CI placeholder; the real bundle is built by the frontend job and shipped with release wheels. -->" > src/model_lenz/frontend_dist/index.html
+      - run: npm test
 
-      - name: Install package and dev deps
-        run: |
-          uv venv --python ${{ matrix.python-version }}
-          uv pip install -e ".[dev]"
+      - run: npm run build
 
-      - name: Lint (ruff)
-        shell: bash
-        run: |
-          source .venv/bin/activate || source .venv/Scripts/activate
-          ruff check src tests
-
-      - name: Type check (mypy on models)
-        shell: bash
-        run: |
-          source .venv/bin/activate || source .venv/Scripts/activate
-          mypy src/model_lenz/models
-
-      - name: Unit tests
-        shell: bash
-        # MODEL_LENZ_SAMPLE_PBIP intentionally NOT set: tests in tests/unit/test_api_routes.py
-        # and tests/e2e/test_sample_pbip.py hard-code assertions against a private fixture
-        # (61 tables, 274 measures). They self-skip when SAMPLE.exists() is false. CI runs the
-        # rest of the suite (parser, classifier, walker, DAX/M extractor tests).
-        run: |
-          source .venv/bin/activate || source .venv/Scripts/activate
-          pytest tests -v
-
-  frontend:
-    name: Frontend build
+  # The suite passes inside the monorepo, where every import resolves from the hoisted
+  # root `node_modules`. That is not what a user gets. This installs the tarballs into an
+  # empty directory and runs the CLI there — the only check that would have caught
+  # `esbuild` being a devDependency while the handoff command imported it at runtime.
+  packaged:
+    name: Install the tarballs like a user
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          node-version: 22
+          cache: npm
 
-      - name: Install
-        working-directory: frontend
-        run: npm ci
+      - run: npm ci
 
-      - name: Type check
-        working-directory: frontend
-        run: npm run typecheck
+      - name: Pack every published package
+        run: |
+          mkdir -p "$RUNNER_TEMP/tarballs"
+          for pkg in core viewer handoff export cli; do
+            npm pack "./packages/$pkg" --pack-destination "$RUNNER_TEMP/tarballs"
+          done
 
-      - name: Build
-        working-directory: frontend
-        run: npm run build
+      - name: Install them into an empty project
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir -p consumer && cd consumer
+          npm init -y > /dev/null
+          npm install "$RUNNER_TEMP"/tarballs/*.tgz
 
-      - name: Upload built bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: src/model_lenz/frontend_dist/
-          retention-days: 7
+      - name: Run the CLI the way a user would
+        working-directory: ${{ runner.temp }}/consumer
+        run: |
+          npx pbi-lineage-lenz check   "$GITHUB_WORKSPACE/samples/contoso"
+          npx pbi-lineage-lenz handoff "$GITHUB_WORKSPACE/samples/contoso" -o handoff.html
+          npx pbi-lineage-lenz docs    "$GITHUB_WORKSPACE/samples/contoso" --format md -o MODEL.md
+          test -s handoff.html
+          test -s MODEL.md
 
-  package:
-    name: Build wheel
-    needs: [python, frontend]
+  # The sample is committed so contributors can reproduce results. It came from a real
+  # Fabric workspace, so a sanitisation slip would publish a hostname or a workspace GUID.
+  # Cheap to check, expensive to miss.
+  no-leaks:
+    name: No internal names anywhere
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Download frontend bundle
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: src/model_lenz/frontend_dist/
-
-      - name: Install build tools
-        run: pip install hatch
-
-      - name: Build sdist + wheel
-        run: hatch build
-
-      - name: Verify wheel installs and CLI runs
+      # The token list is the lesson from the first run of this job, which found the
+      # BigQuery project id in two test files and then stopped looking. A leak is not one
+      # string: it is a vocabulary — table names, key-naming conventions, business terms.
+      # Add to this list rather than excluding a file from it. The only two exclusions are
+      # this file and the test that asserts the same thing, both of which have to name the
+      # tokens in order to look for them.
+      - name: Grep the tree
         run: |
-          python -m venv test_env
-          ./test_env/bin/pip install dist/model_lenz-*.whl
-          ./test_env/bin/model-lenz version
-          ./test_env/bin/model-lenz summary examples/tiny_pbip
-
-      - name: Upload wheel and sdist
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 30
+          if grep -rIil --exclude-dir=.git \
+               -e 'ingka' -e 'ilo-ia-prod' -e 'sample_powerbi' -e '77oajh3' -e 'fauoi4qi' \
+               -e 'oversell' -e 'business_unit' -e 'report_fulfilment' -e 'HFB' \
+               -e 'Pia Link' -e '_isk' -e '_ifk' \
+               -e 'wait time' -e 'switch_over' -e 'cut off time' . \
+             | grep -v -e '^./.github/workflows/ci.yml$' \
+                       -e '^./packages/core/tests/bundledSample.test.js$'; then
+            echo "::error::An internal name reached the tree. See the matches above."
+            exit 1
+          fi

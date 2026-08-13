@@ -1,121 +1,283 @@
-![Model Lenz](docs/hero.png)
+# PBI Lineage Lenz
 
-# Model Lenz
+**Trace any number on a Power BI report back to the physical column it came from — and
+send the whole picture to someone who has never opened Power BI.**
 
-*Open-source static analyzer for Power BI PBIP projects. For any DAX measure, it shows every table that measure depends on (directly through the expression, and indirectly through active relationships).*
+[**▶ See a live example**](https://jonathanjihwankim.github.io/pbi-lineage-lenz/demo.html) —
+a real model, in your browser, nothing to install.
 
-[![PyPI](https://img.shields.io/pypi/v/model-lenz.svg)](https://pypi.org/project/model-lenz/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-%E2%89%A53.10-blue.svg)](https://www.python.org/downloads/)
-[![GitHub Sponsors](https://img.shields.io/github/sponsors/JonathanJihwanKim?label=Sponsor&logo=GitHub)](https://github.com/sponsors/JonathanJihwanKim)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-%E2%98%95-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jihwankim)
-[![Microsoft MVP](https://img.shields.io/badge/Microsoft-MVP-5E5E5E?logo=microsoft)](https://mvp.microsoft.com/en-us/PublicProfile/5005958)
+![The source map: every model column beside the physical column it came from](docs/images/source-map.png)
 
-**If Model Lenz has saved you time on a model review, sponsor here — it takes 30 seconds:**
-
-[![Sponsor on GitHub](https://img.shields.io/badge/GitHub_Sponsors-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/JonathanJihwanKim)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jihwankim)
+Free and open source. No paid tier, no login, no server.
 
 ---
 
-## Why Model Lenz
+## The problem
 
-- **One screenshot ends the "which tables does this measure actually touch?" thread.** Direct DAX refs, transitively-resolved sub-measures, and indirectly-walked relationships (with `USERELATIONSHIP` overrides) — all in one graph you can paste into a PR.
-- **Both names on every node, no mode toggle.** A Power BI developer sees the semantic-model name they type in DAX. A data engineer sees the BigQuery FQN / SQL `[schema].[table]` / Snowflake `DB.SCHEMA.TABLE` / file path on the same node. Both sides read the same screenshot.
-- **Diff two PBIPs (or two Git refs) on the graph itself.** Green / amber / red borders on table cards and relationship edges show what changed. Catches the table-set drift that reviewers miss when they read DAX line by line.
-- **Read-only, local, ad-free, no XMLA, no phoning home.** Runs from a single Python wheel. Source control is the only prerequisite.
+A data engineer knows `Lakehouse_Contoso.dbo.customer.CustomerKey`.
+A Power BI developer knows `customer[CustomerKey]`.
+
+They are the same column, and nothing in either person's tooling says so. Every *"where
+does this number actually come from?"* becomes a meeting.
+
+You can work it out by hand — open the PBIP, find the table, read the Power Query steps,
+follow the renames, then hunt for the visuals that use the measure that reads the column.
+It takes an afternoon, and it is stale the following week. So nobody does it.
+
+## What this is for
+
+Three things, and deliberately not more. This consolidates three earlier tools, but it is
+not a pile of all their features — anything that did not serve one of these did not get
+built.
+
+| | |
+|---|---|
+| **Find the lineage, correctly** | From a visual on a page, through the measure, through the DAX, through every Power Query step, to the physical table and column. *Correctly* is the hard part, and it is where nearly all the work went. |
+| **Understand the model like a lens** | Which tables are facts, which are dimensions, what joins to what, what a measure really depends on — for a model you did not build. |
+| **Documentation you can hand over** | One self-contained HTML file, or markdown with an ER diagram that renders on GitHub. Both readable by someone with no Power BI at all. |
 
 ---
 
-## Use it in 30 seconds
+## Main features
+
+### Four lenses over one model
+
+| Lens | The question it answers |
+|---|---|
+| **Model** | What am I looking at? Which tables are facts, which are dimensions, and what joins to what? |
+| **Source map** | Which physical column is behind this model column — and how sure are we? |
+| **Measures** | What is the DAX, which physical columns does it read, and which visuals show it? |
+| **Pages** | What is on this report page, and where exactly is this visual? |
+
+**Model** — table roles are read from the *direction* of relationships, not from names. A
+table that only originates joins is a fact; one that only receives them is a dimension.
+`_fct` and `_dim` line up in one model and will not in the next.
+
+![The model lens: 2 facts, 4 dimensions, and what the sales table joins to](docs/images/model-lens.png)
+
+**Measures** — the DAX, the physical columns underneath it, and every visual that shows it,
+each located on its page. That last one is the question that decides whether a change is
+safe.
+
+![The measures lens: DAX, the physical columns it reads, and where it is shown](docs/images/measures.png)
+
+**Pages** — nothing is ever filtered out. Hidden visuals are listed with the bookmark that
+reveals them, because that is exactly where field parameters and calculation groups live.
+
+![The pages lens: every visual on the page, and where it sits](docs/images/pages.png)
+
+### The handoff file
+
+Click **Export handoff** and get **one HTML file**. No Power BI, no project folder, no
+install, no network access — it opens in any browser on any OS and fetches nothing.
+
+Only the person producing it needs Chrome or Edge. Everyone reading it needs a browser.
+
+Every measure and column has a link you can paste straight into a chat.
+
+### A CI gate people keep switched on
+
+`check` fails the build on a broken reference and *reports* everything else, because a gate
+that fails on judgement calls gets disabled within a week — and a disabled gate catches
+nothing.
+
+### Both names, everywhere
+
+Every column carries its model name and its physical name side by side, with an honest
+label on the mapping. Press **S** to swap which vocabulary leads.
+
+---
+
+## Quick start
+
+### 1. Look at the example — 10 seconds, nothing to install
+
+**[Open the live demo →](https://jonathanjihwankim.github.io/pbi-lineage-lenz/demo.html)**
+
+A real Contoso model with a Fabric Lakehouse behind it. Click through the four lenses.
+This is also exactly what a handoff file looks like when somebody sends you one.
+
+### 2. Open your own model — 1 minute
+
+**[Open the web app →](https://jonathanjihwankim.github.io/pbi-lineage-lenz/)** and click
+**Open a PBIP folder**.
+
+- **Which folder?** The one holding your `.SemanticModel` and `.Report` folders — where
+  your `.pbip` file sits. The `.SemanticModel` folder on its own also works.
+- **Is anything uploaded?** No. The folder is read in the page, parsed in the page, and
+  rendered in the page. There is no server to send it to.
+- **Which browsers?** Chrome and Edge get a proper folder picker. Firefox and Safari work
+  through a file picker; the only thing they lose is choosing where an export saves.
+
+### 3. Hand it to a data engineer — 1 minute
+
+Click **Export handoff** and send the file. That is the whole workflow. They need no Power
+BI, no access to your workspace, and no install.
+
+Prefer machine-readable? **Export JSON** gives you the same parsed model the page is
+rendering.
+
+### 4. Do it from the command line
 
 ```bash
-uv tool install model-lenz                              # or: pipx install model-lenz
-model-lenz demo                                         # bundled 5-table PBIP, opens in browser
-model-lenz serve "C:\path\to\Sales.SemanticModel"      # your own PBIP
+# The hero, scriptable
+npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
+
+# Documentation to commit beside the PBIP — includes a mermaid ER diagram
+# that GitHub renders inline, so the model is readable in a pull request
+npx pbi-lineage-lenz docs ./MyReport -o MODEL.md
+
+# CI gate — exits 1 on a broken reference
+npx pbi-lineage-lenz check ./MyReport
+
+# What changed about the model, not which lines moved
+npx pbi-lineage-lenz diff main..HEAD
 ```
 
-Nothing to clone. The wheel ships the CLI, the React UI, and a tiny demo PBIP.
+Point any command at the project root, the `.SemanticModel` folder, or a bare `definition`
+folder. If a folder holds several reports — a Fabric workspace synced to git usually does —
+it reads each report's `definition.pbir`, pairs it with the model that report actually
+names, and tells you which one it chose.
 
-Need help with PATH on Windows, updates, path forms, or troubleshooting? → [docs/install.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/install.md)
+Try it against the bundled sample right now:
 
----
+```bash
+git clone https://github.com/JonathanJihwanKim/pbi-lineage-lenz
+cd pbi-lineage-lenz && npm install
+node packages/cli/src/bin.js handoff samples/contoso -o handoff.html
+```
 
-## Sponsor
+### 5. Put the gate in CI
 
-Model Lenz is free, ad-free, never phones home. Sponsorship is what decides what ships next. Right now your contribution funds:
+```bash
+npx pbi-lineage-lenz check ./MyReport                          # broken references only
+npx pbi-lineage-lenz check ./MyReport --min-coverage 70        # also require 70% traced
+npx pbi-lineage-lenz check ./MyReport --fail-on broken,dangling-visuals
+```
 
-- **`model-lenz check` for CI (v0.4).** Shipped — fails a PR build on broken references, ambiguous propagation paths, or an indirect-table-set blow-up past your threshold. Next up: baseline-drift comparison (`--git` against `main`) so the gate catches a *sudden* blow-up, not just an absolute one.
-- **Annotation layer on sub-graph exports.** Inline reviewer comments on exported SVG / Mermaid attached to a PR.
-- **Snowflake-native-SQL, Databricks, Synapse Serverless connectors.** Each opens a class of warehouses Model Lenz currently labels with low confidence.
+| rule | what it finds | fails the build |
+|---|---|---|
+| `broken` | DAX reading a column or measure that does not exist | **yes** |
+| `dangling-visuals` | a visual referencing a measure that does not exist | no |
+| `unused` | measures nothing reaches, following measure-to-measure references | no |
+| `coverage` | columns with no physical source | only with `--min-coverage` |
+| `dead-visuals` | hidden visuals that no bookmark reveals | no |
 
-If the tool already saved you a model-review headache, that's the trade — one click, one coffee, more features for everyone:
+`dangling-visuals` is separate from `broken` because it fails *quietly*: a measure whose
+DAX reads a deleted column errors, while a card whose dynamic label references a deleted
+measure just renders blank. One real report carried 12 of these and nobody had noticed.
 
-[![Sponsor on GitHub](https://img.shields.io/badge/GitHub_Sponsors-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/JonathanJihwanKim)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jihwankim)
-
-Sponsor at the $10+ tier and you'll be listed (with your consent) in the [Hall of Sponsors](#hall-of-sponsors). Top tier on GitHub Sponsors includes a 30-minute monthly call with a Microsoft MVP.
-
----
-
-## What's in the box
-
-- **`serve`** — interactive measure-dependency graph for any PBIP. Switch PBIPs in-app via the header **Open…** button; no server restart.
-- **`diff`** — two PBIPs (or two Git refs via `--git`) side-by-side on the same graph canvas, with a List tab for the per-entity audit. → [docs/diff.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/diff.md)
-- **`summary` / `inspect`** — counts, classification breakdown, full parsed model as JSON. CI-friendly.
-- **`check`** — CI gate that fails a PR build on broken references, ambiguous propagation paths, or an indirect-table blow-up. Text / JSON output plus GitHub Actions annotations.
-- **Share + embed** — **Copy link** (selection + depth in URL), **Copy MD** (one-pager handoff card), **Copy Mermaid**, **Download SVG**. Diff exports color both borders and arrows; removed edges render dashed.
-
-Full CLI reference and feature table: [docs/cli.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/cli.md). Concepts and FAQ: [docs/faq.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/faq.md).
-
----
-
-## Roadmap
-
-- **v0.3.x — diff polish.** _Shipped._ Graph-canvas diff, shareable URLs, Markdown handoff cards, Mermaid / SVG exports, Git-ref diff mode. v0.3.2 colored relationship arrows in Mermaid diff exports.
-- **v0.4 — guardrails before the merge.** `model-lenz check` CI gate _(shipped: broken-reference + ambiguous-path + static indirect-table-set blow-up rules; baseline-drift comparison still to come)_ · annotation layer on sub-graph exports.
-- **Later.** DMV / XMLA mode for deployed semantic models · `.pbix` adapter · perspective-aware views · Kimball-style bus-layout auto-arrangement.
-
-> **Not on this roadmap by design:** report-layer (PBIR) measure-usage — which pages and visuals consume each measure. That's what **[PBIP Lineage Explorer](https://github.com/JonathanJihwanKim/pbip-lineage-explorer)** is for.
-
-Have something else you'd like to see? Open a [feature request](https://github.com/JonathanJihwanKim/pbip_model_lenz/issues/new?template=feature_request.yml). [Sponsorship](#sponsor) decides what ships first.
+[`.github/workflows/handoff.yml`](.github/workflows/handoff.yml) is a ready-made workflow:
+it runs the gate on every PR, builds a handoff file, and comments a download link plus a
+summary of what changed about the model.
 
 ---
 
-## Also by Jihwan Kim
+## Reading the confidence labels
 
-- **[PBIP Lineage Explorer](https://github.com/JonathanJihwanKim/pbip-lineage-explorer)**. Trace any visual back to its source columns through DAX. Browser-based, 100% client-side. *"Where does the number on this card actually come from?"*
-- **[PBIP Documenter](https://github.com/JonathanJihwanKim/pbip-documenter)**. Generate bidirectional documentation (measures, tables, relationships, M-steps, native SQL) from PBIP/TMDL in seconds. *"Can I hand someone a readable spec of this model without writing one?"*
+This is the part a data engineer will judge the whole tool on, so it is worth thirty
+seconds.
 
-Together with Model Lenz, the three tools cover the model side, the report side, and the documentation side of a PBIP project without overlap.
+| label | meaning |
+|---|---|
+| **`exact`** | The source name is **stated by the model** — a rename pair written down, a projection, a native-SQL select list, a Direct Lake partition, or a chain in which every step is accounted for and none of them *can* rename a column. |
+| **`inferred`** | The chain contains a step the tool cannot read, so the name is **assumed** to pass through unchanged. Usually right. Still an assumption. |
+| **`unknown`** | No physical table could be established. It says so instead of guessing. |
+
+**A tool that quietly guesses is worse than one that admits the gap**, because you cannot
+tell which rows to trust.
+
+Completeness is tracked separately from confidence. A calculated table built with `UNION`
+draws one column from several facts and DAX records only the first — so the path shown is
+right but partial, and the row says `+1 more` rather than reading as the whole answer.
+
+---
+
+## How much to trust it
+
+Two real models, both asserted in the test suite, so a parser change that quietly collapses
+them fails the build.
+
+**The bundled sample** — Contoso on a Fabric Lakehouse: 7 tables, 12 visuals, committed at
+[`samples/contoso/`](samples/contoso/) so you can reproduce every number yourself:
+
+- **95%** of source-backed columns traced, **none assumed**
+- Direct Lake, import and calculated tables all resolved
+- 0 broken references, 0 dangling visual references
+
+**A real production report** — 61 tables, 473 columns, 274 measures, 542 visuals:
+
+- **384 of 467** columns that read from a source traced to a physical column (**82%**),
+  every one **stated** rather than assumed
+- **0** broken references, after eight parser fixes each of which the tool found in itself
+  — the first version reported 166, and every one was an artefact
+- **14** measures nothing reaches, following measure-to-measure references rather than
+  direct visual bindings; the direct-only reading claimed 101
+- **2** genuinely dead visuals out of 17 hidden ones; the other 15 have a named bookmark
+
+Synthetic fixtures were all green while real-world resolution sat at 0.2%. That is why
+there is a real model in the loop, and why the sample above ships with the code.
 
 ---
 
-## More detail when you need it
+## Become a sponsor
 
-- **Install / update / troubleshooting:** [docs/install.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/install.md)
-- **CLI reference + feature table:** [docs/cli.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/cli.md)
-- **Diff walkthrough + share / export buttons:** [docs/diff.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/diff.md)
-- **FAQ + concept primer:** [docs/faq.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/faq.md)
-- **Architecture + contributor tour:** [CONTRIBUTING.md](CONTRIBUTING.md)
+**This is free, and it stays free.** No paid tier, no feature behind a login, no
+"enterprise edition". If you ever find one, that is a bug.
 
----
+Sponsorship buys recognition, priority triage, and a say in the roadmap — never
+functionality. [SPONSORS.md](SPONSORS.md) says exactly what it does and does not buy.
 
-## Support development
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?logo=github-sponsors)](https://github.com/sponsors/JonathanJihwanKim)
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/jihwankim)
 
-Free tools survive when the people who get value from them give back. If Model Lenz saved you time on a model review, an audit, or a *"wait, where does this column actually come from?"* conversation, here's where:
-
-[![Sponsor on GitHub](https://img.shields.io/badge/GitHub_Sponsors-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/JonathanJihwanKim)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jihwankim)
-
-GitHub Sponsors runs $2 / $5 / $10 / $25 / $50 per month. Buy Me a Coffee is one-time, any amount. Both go to the same person.
-
-### Hall of Sponsors
-
-*Your name here. Sponsor at the $10+ tier and you'll be listed (with your consent) here on the README and on the project website.*
+If your organisation depends on this, sponsoring is what keeps it maintained by someone who
+uses it in production.
 
 ---
+
+## Related projects
+
+Both still maintained, as focused single-purpose tools:
+
+- [**pbip-documenter**](https://github.com/JonathanJihwanKim/pbip-documenter) — deep PBIP
+  documentation, detailed ERDs, drawio and mermaid export
+- [**pbip-lineage-explorer**](https://github.com/JonathanJihwanKim/pbip-lineage-explorer) —
+  interactive D3 lineage tree, git diff, VS Code extension
+
+Use this one when you want the source-system bridge and the handoff file.
+
+## Contributing
+
+A bug report naming a PBIP shape the tool got wrong is the most valuable thing you can
+send. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Development
+
+```bash
+npm install
+npm test                # 560 tests
+npm run dev             # the web app
+npm run build           # the web app, for GitHub Pages
+```
+
+```
+packages/core      parsing, naming, graph, diff — platform independent
+packages/viewer    read-only UI; no file I/O, no network
+packages/handoff   one self-contained HTML file from a parsed model
+packages/export    markdown, mermaid ERD, and JSON
+packages/cli       npx pbi-lineage-lenz
+apps/web           the browser app
+samples/contoso    the model behind every screenshot above
+```
+
+`packages/viewer` is the pivot: the web app and the handoff file mount the identical
+component, which is what makes a handoff cheap to produce and identical to read.
+
+## Security and privacy
+
+The web app reads local files and transmits nothing. See [SECURITY.md](SECURITY.md).
 
 ## License
 
-[MIT](LICENSE). Use it commercially, fork it, ship it inside whatever you're building. Attribution appreciated but not required.
+MIT © Jihwan Kim

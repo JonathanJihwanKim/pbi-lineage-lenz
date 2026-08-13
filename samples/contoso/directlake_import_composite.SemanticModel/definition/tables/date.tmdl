@@ -1,0 +1,166 @@
+table date
+	lineageTag: e0ee9467-0efe-4c5b-be0f-3f2f0749cb78
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: Long Date
+		lineageTag: 1dbccfdb-7c38-4a89-91df-301207e90d76
+		summarizeBy: none
+		sourceColumn: Date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column DateKey
+		dataType: int64
+		formatString: 0
+		lineageTag: 2551f423-c10c-40ee-922d-65b81a5fb319
+		summarizeBy: count
+		sourceColumn: DateKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column Year
+		dataType: int64
+		formatString: 0
+		lineageTag: 3ec75dcc-1613-488d-a0b4-a3e9957758af
+		summarizeBy: sum
+		sourceColumn: Year
+
+		annotation SummarizationSetBy = Automatic
+
+	column YearQuarter
+		dataType: string
+		lineageTag: a049d212-6e1b-410e-b922-804a3a5f1136
+		summarizeBy: none
+		sourceColumn: YearQuarter
+
+		annotation SummarizationSetBy = Automatic
+
+	column YearQuarterNumber
+		dataType: int64
+		formatString: 0
+		lineageTag: dd825d6c-03db-4e39-af87-d328dbc62eba
+		summarizeBy: sum
+		sourceColumn: YearQuarterNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column Quarter
+		dataType: string
+		lineageTag: 8684512a-7b70-4aad-adca-75fc79a46561
+		summarizeBy: none
+		sourceColumn: Quarter
+
+		annotation SummarizationSetBy = Automatic
+
+	column YearMonth
+		dataType: string
+		lineageTag: abc3f75b-1b56-4233-910a-876d7a2cf0b3
+		summarizeBy: none
+		sourceColumn: YearMonth
+
+		annotation SummarizationSetBy = Automatic
+
+	column YearMonthShort
+		dataType: string
+		lineageTag: 5b027814-9d1e-4efb-9a3b-988aef3f5fb8
+		summarizeBy: none
+		sourceColumn: YearMonthShort
+		sortByColumn: YearMonthNumber
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column YearMonthNumber
+		dataType: int64
+		formatString: 0
+		lineageTag: 5339b62f-2dff-4122-9611-14288d1cff32
+		summarizeBy: sum
+		sourceColumn: YearMonthNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column Month
+		dataType: string
+		lineageTag: e5d8b6ec-aaae-429a-a509-e3311cfce830
+		summarizeBy: none
+		sourceColumn: Month
+
+		annotation SummarizationSetBy = Automatic
+
+	column MonthShort
+		dataType: string
+		lineageTag: e1b9a094-66db-4c42-a03d-483427a2a6f5
+		summarizeBy: none
+		sourceColumn: MonthShort
+
+		annotation SummarizationSetBy = Automatic
+
+	column MonthNumber
+		dataType: int64
+		formatString: 0
+		lineageTag: 32e29c05-d84b-40ea-a1da-cfb868dd6e1e
+		summarizeBy: sum
+		sourceColumn: MonthNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column DayofWeek
+		dataType: string
+		lineageTag: 097e9b30-5d01-463b-8c81-a5e8916c82a5
+		summarizeBy: none
+		sourceColumn: DayofWeek
+
+		annotation SummarizationSetBy = Automatic
+
+	column DayofWeekShort
+		dataType: string
+		lineageTag: 7f9ca905-b779-4e82-96fa-504f3c2e5c29
+		summarizeBy: none
+		sourceColumn: DayofWeekShort
+
+		annotation SummarizationSetBy = Automatic
+
+	column DayofWeekNumber
+		dataType: int64
+		formatString: 0
+		lineageTag: 7e25e204-7354-4539-a6b4-d8275b2178e8
+		summarizeBy: sum
+		sourceColumn: DayofWeekNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column WorkingDay
+		dataType: int64
+		formatString: 0
+		lineageTag: 2e8d0030-d3da-4713-a828-74ce04e61489
+		summarizeBy: sum
+		sourceColumn: WorkingDay
+
+		annotation SummarizationSetBy = Automatic
+
+	column WorkingDayNumber
+		dataType: int64
+		formatString: 0
+		lineageTag: 2b5649e9-cf2b-4a6e-bbb4-cad1e29ab87d
+		summarizeBy: sum
+		sourceColumn: WorkingDayNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	partition date = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database("contoso-lakehouse.datawarehouse.fabric.microsoft.com", "Lakehouse_Contoso"),
+				    dbo_customer = Source{[Schema="dbo",Item="date"]}[Data]
+				in
+				    dbo_customer
+
+	annotation PBI_ResultType = Table
+

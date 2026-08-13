@@ -1,183 +1,83 @@
-# Contributing to Model Lenz
+# Contributing
 
-Thanks for your interest in improving Model Lenz. This guide covers how to set up the project locally, where things live, and what kind of changes are most welcome.
+## The most useful thing you can send
 
-## Architecture at a glance
+**A PBIP shape this tool got wrong.**
 
-```
-                           ┌───────────────────┐
-   .tmdl, .pq files  ───▶  │  Python backend   │  ◀── HTTP /api  ───┐
-   in your PBIP            │  parsers /        │                    │
-                           │  analyzers /      │   ┌──────────────────┐
-                           │  FastAPI          │   │ React + Vite SPA │
-                           └───────────────────┘   │ D3 force graph   │
-                                  ▲                │ Zustand store    │
-                                  │                └──────────────────┘
-                           model-lenz CLI
-                          (typer + uvicorn)
-```
+Every serious bug in this project was found by pointing it at a model nobody had tried
+before — a report whose name did not match its model, a Direct Lake partition, a column
+renamed inside `Table.ExpandTableColumn` rather than `Table.RenameColumns`. None was found
+by reading the code, and the synthetic fixtures were all green throughout.
 
-- **Parser layer** (`src/model_lenz/parsers/`). TMDL block parser (indent-aware state machine), DAX reference extractor (hand-rolled tokenizer), M-query lineage extractor (recursive descent with native-SQL parsing).
-- **Analysis layer** (`src/model_lenz/analyzers/`). Relationship graph and indirect-dep walker on NetworkX, transitive measure resolver, fact/dim classifier.
-- **JSON contract** (`src/model_lenz/models/`). Pydantic models that the API serializes and the frontend mirrors as TypeScript types. `mypy --strict` runs **only** on this package.
-- **HTTP API** (`src/model_lenz/api/routes.py`). FastAPI. Full OpenAPI at `/docs`.
-- **Frontend** (`frontend/`). React 18 + Vite + TypeScript. Force graph in D3 directly (no Cytoscape). Zustand for state.
+So a report that says *"my model has X and the source map shows Y"* is worth more than a
+patch. Open an issue with:
 
-For the full data-flow trace through a single `/api/measures/{table}/{name}/graph` request, see [CLAUDE.md](CLAUDE.md).
+- what the tool said, and what the model actually contains
+- the TMDL or `visual.json` fragment that produces it, with names changed if you need to
+- ideally, a minimal `samples/`-shaped folder that reproduces it
 
-## Project layout
+If you can share a sanitised project, that is the gold standard — see
+[`samples/contoso/`](samples/contoso/) for the shape and for what "sanitised" means.
 
-```
-src/model_lenz/         Python package (parser, analyzers, API, CLI)
-  parsers/              TMDL, DAX, M-query parsers
-  analyzers/            Classifier, relationship walker, transitive resolver
-  models/               Pydantic schemas (the JSON contract)
-  api/                  FastAPI routes + cache
-  server.py             Uvicorn launcher
-  cli.py                Typer entry point: `model-lenz`
-  frontend_dist/        Built React bundle (committed at release time)
-
-frontend/               React + Vite + TypeScript source
-  src/
-    api/                Mirror of the JSON contract + fetch client
-    store/              Zustand store
-    components/         Header, Sidebar, DetailPanel, Legend
-    graph/              D3 force graph (the centerpiece visualization)
-
-tests/
-  unit/                 Fast, deterministic unit tests
-  e2e/                  Tests that read a real PBIP — gated on
-                        $MODEL_LENZ_SAMPLE_PBIP
-  fixtures/             Hand-authored TMDL slices
-
-examples/tiny_pbip/     Runnable PBIP shipped with the repo
-```
-
-## Dev environment
-
-You need Python 3.10+ and Node 20+.
-
-### One-time setup
-
-**Step 1.** Create the Python virtual environment with `uv`:
+## Running it
 
 ```bash
-uv venv --python 3.12
+npm install
+npm test                 # the whole suite
+npx vitest run <file>     # one file
+npm run dev              # the web app at localhost:5173
 ```
 
-**Step 2.** Install Model Lenz in editable mode along with dev dependencies:
+Try changes against the bundled sample rather than a synthetic fixture:
 
 ```bash
-uv pip install -e ".[dev]"
+node packages/cli/src/bin.js check   samples/contoso
+node packages/cli/src/bin.js handoff samples/contoso -o /tmp/h.html
 ```
 
-**Step 3.** Install the frontend dependencies:
+## The rule that matters most
 
-```bash
-cd frontend && npm install && cd ..
-```
+**A real model stays in the loop.**
 
-That's all the one-time setup you need.
+`packages/core/tests/bundledSample.test.js` runs everywhere, against a project committed
+in this repository. It is not a formality: real-world resolution once sat at **0.2%** while
+every synthetic fixture passed. If you change a parser, check what happens to the sample's
+numbers before you check what happens to the unit tests.
 
-### Daily dev loop — hot reload (recommended)
+A second suite guards a 61-table production model. It is not in this repository and will
+not be — it is written against a private report, so it names that report's tables and
+measures. That is fine for you: it would skip itself on your machine anyway. But it means
+the numbers quoted in the README come from a model you cannot run, and the bundled sample
+is the one doing the real work in your checkout.
 
-Iterate on the UI with sub-second feedback. You'll need two terminals running side by side.
+## What a good change looks like
 
-**Terminal 1** — Python API server on port 8765 (no browser, no frontend bundle needed):
+- **Explain the *why* in a comment, not the *what*.** The code says what it does. A comment
+  earns its space by recording the case that made the code look like that — which is
+  usually a specific model that broke it.
+- **A test that would have failed before.** If the fix is real, there is an input that used
+  to produce the wrong answer. Assert on that input.
+- **Numbers, when you have them.** "This moved coverage from 78% to 95% on the sample" is a
+  reviewable claim. "Improves lineage" is not.
+- **Honest confidence.** A wrong `exact` is a much worse bug than an `unknown`. If a change
+  makes the tool *more* certain, be sure the certainty is stated by the model rather than
+  assumed by the parser.
 
-```bash
-.venv/Scripts/model-lenz serve examples/tiny_pbip --port 8765 --no-browser
-```
+## Scope
 
-(Linux/macOS: drop the `Scripts/` and use `.venv/bin/model-lenz`.)
+This is deliberately not a general Power BI toolkit. It does three things: find lineage
+correctly, make a model understandable, and produce documentation you can hand to someone.
+A feature that does not serve one of those is likely to be declined — not because it is a
+bad idea, but because [pbip-documenter](https://github.com/JonathanJihwanKim/pbip-documenter)
+and [pbip-lineage-explorer](https://github.com/JonathanJihwanKim/pbip-lineage-explorer)
+exist and may be the better home for it.
 
-Restart this terminal manually whenever you edit a `.py` file.
+## Style
 
-**Terminal 2** — Vite dev server on port 5173 with hot module reload:
+No framework, no build step in `packages/*` — plain ES modules that run in Node and the
+browser unchanged. `packages/viewer` may touch the DOM; `packages/core` may not touch the
+DOM, the filesystem, or the network.
 
-```bash
-cd frontend && npm run dev
-```
+## License
 
-Open `http://localhost:5173/` in your browser. Vite proxies `/api/*` calls to the Python server on `:8765`. Edit any `.tsx` or `.css` file under `frontend/src/` and the browser updates in well under a second — no rebuild, no reinstall.
-
-**Windows shortcut** — `dev.ps1 dev` does both terminals for you in one command:
-
-```powershell
-.\dev.ps1 dev "examples\tiny_pbip"
-```
-
-It opens two new PowerShell windows (one per terminal) and a browser tab.
-
-### Run the test suite
-
-Unit tests (fast, run in under 2 s):
-
-```bash
-pytest tests/unit -v
-```
-
-Include the end-to-end sample test by pointing it at a real PBIP:
-
-```bash
-MODEL_LENZ_SAMPLE_PBIP=/path/to/your/PBIP pytest tests -v
-```
-
-Or use the bundled example so the e2e tests work without a real model:
-
-```bash
-MODEL_LENZ_SAMPLE_PBIP=examples/tiny_pbip pytest -v
-```
-
-### Pre-release validation — test the actual end-user install path
-
-Before tagging a release (or before sharing the install URL with anyone), verify that a *fresh* `uv tool install` of the wheel works end to end. On Windows, one command does the whole rebuild + reinstall + bundle-hash check:
-
-```powershell
-.\dev.ps1 reinstall
-```
-
-This kills any running `model-lenz` processes, rebuilds the React bundle, rebuilds the Python wheel, force-reinstalls the global tool from the new wheel, and confirms the source `frontend_dist` and the installed `frontend_dist` have matching JS hashes. After it finishes, `model-lenz serve` from any new terminal runs the latest code.
-
-Skip this for daily UI iteration — the HMR loop above is 200x faster.
-
-## Style and quality
-
-- **Python**: `ruff` for linting/formatting, `mypy --strict` on `src/model_lenz/models/` only (the JSON contract — strictly typed). Other modules use lenient typing.
-- **TypeScript**: `tsc --noEmit` in the frontend; `npm run typecheck`.
-- Default to writing **no comments**. Add a comment only when it explains *why* something non-obvious is happening (a hidden constraint, a workaround, a subtle invariant). Don't restate what the code does.
-- Tests live next to the layer they exercise (parser tests test parsers, walker tests test the walker). Keep fixtures small and hand-authored — no copy-pasted real-world dumps.
-
-## High-leverage contribution areas
-
-Particularly welcome:
-
-1. **TMDL parser fixtures.** Found a TMDL construct that produces a warning or wrong AST? Add a minimal `.tmdl` snippet to `tests/fixtures/edge_cases/` with the expected behaviour. The parser is intentionally tolerant — every fixture grows the test suite.
-2. **M lineage connectors.** Add detection for a connector you use (Snowflake, Databricks, Postgres, REST APIs, etc.) in `src/model_lenz/parsers/m_query.py`. Each connector is a small recognizer + a few tests in `test_m_lineage.py`.
-3. **Frontend visual polish.** New node shapes, better edge routing, keyboard shortcuts, accessible focus rings.
-4. **Real-world PBIP samples.** Anonymized PBIP folders we can include as fixtures help us catch regressions.
-
-## What's *not* in scope
-
-- Authoring or modifying PBIP files (Model Lenz is read-only by design — the README's FAQ states this explicitly).
-- Re-implementing what Tabular Editor or DAX Studio already do well (DAX expression debugging, profile traces).
-- Connecting to a live AS/Fabric XMLA endpoint (different problem; XMLA-based introspection might land in a separate sibling tool).
-
-## Pull requests
-
-- One topic per PR.
-- Add or update tests for behavior changes.
-- Include a one-paragraph description focused on the *why* (commit-message style).
-- Keep frontend bundle changes (`src/model_lenz/frontend_dist/`) out of feature PRs — those are regenerated at release time.
-
-## Releasing (maintainers only)
-
-```bash
-cd frontend && npm run build      # rebuild the SPA bundle
-hatch build                       # produce sdist + wheel into dist/
-# verify: pipx install dist/model_lenz-X.Y.Z-py3-none-any.whl
-twine upload dist/*               # or use OIDC publish via GitHub Actions
-git tag vX.Y.Z && git push --tags
-```
-
-Thanks for contributing.
+By contributing you agree that your contribution is licensed under the MIT License.

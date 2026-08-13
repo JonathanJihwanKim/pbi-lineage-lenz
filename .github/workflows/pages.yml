@@ -1,0 +1,66 @@
+# Deploy the web app to GitHub Pages.
+name: Deploy web app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, but let a running one finish rather than cancelling it —
+# a half-deployed Pages site is worse than a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The app builds a handoff file in the browser from a viewer bundle baked in at
+      # build time. If the viewer is broken, the app still builds and only the exported
+      # file is wrong — which nobody would notice until a recipient opened a blank page.
+      - run: npm test
+
+      - run: npm run build --workspace=@pbi-lineage-lenz/web
+        env:
+          PAGES_BASE: /${{ github.event.repository.name }}/
+
+      # A clickable example, built by the same CLI a user would run. Somebody evaluating
+      # this should see the whole thing working before being asked to hand over a folder —
+      # and building it here rather than committing it means the demo can never drift from
+      # the code that produced it.
+      - name: Build the demo handoff
+        run: node packages/cli/src/bin.js handoff samples/contoso -o apps/web/dist/demo.html
+
+      # The landing page links to demo.html. A deploy that silently dropped it would leave
+      # a dead button on the front door, which is worse than having no button at all.
+      - name: Fail if the demo is missing
+        run: test -s apps/web/dist/demo.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

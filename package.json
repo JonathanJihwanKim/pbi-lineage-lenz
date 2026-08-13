@@ -1,0 +1,38 @@
+{
+  "name": "pbi-lineage-lenz",
+  "version": "1.0.0",
+  "description": "One lens on your Power BI model — for the BI developer and the data engineer. Trace lineage, generate docs, and hand off a single self-contained HTML file that opens in any browser.",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "npm run dev --workspace=@pbi-lineage-lenz/web",
+    "build": "npm run build --workspace=@pbi-lineage-lenz/web"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  },
+  "license": "MIT",
+  "author": "Jihwan Kim",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JonathanJihwanKim/pbi-lineage-lenz"
+  },
+  "keywords": [
+    "power-bi",
+    "pbip",
+    "pbir",
+    "tmdl",
+    "dax",
+    "lineage",
+    "data-lineage",
+    "semantic-model",
+    "fabric",
+    "documentation"
+  ]
+}

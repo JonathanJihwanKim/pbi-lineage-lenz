@@ -1,0 +1,40 @@
+{
+  "name": "@pbi-lineage-lenz/core",
+  "version": "1.0.0",
+  "description": "Core analysis engine for Power BI PBIP projects — parse TMDL/PBIR/M, build dependency graphs, trace DAX lineage, and resolve model names back to physical source-system names",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./parser/*": "./src/parser/*",
+    "./naming/*": "./src/naming/*",
+    "./graph/*": "./src/graph/*",
+    "./diff/*": "./src/diff/*",
+    "./utils/*": "./src/utils/*"
+  },
+  "files": [
+    "src/",
+    "LICENSE"
+  ],
+  "keywords": [
+    "power-bi",
+    "pbip",
+    "lineage",
+    "pbir",
+    "tmdl",
+    "dax",
+    "power-query",
+    "m-query",
+    "data-lineage",
+    "impact-analysis",
+    "semantic-model"
+  ],
+  "license": "MIT",
+  "author": "Jihwan Kim",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanJihwanKim/pbi-lineage-lenz.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/JonathanJihwanKim/pbi-lineage-lenz#readme"
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@pbi-lineage-lenz/export",
+  "version": "1.0.0",
+  "description": "Render a parsed Power BI model as markdown or JSON — string in, string out, so it runs in Node and in the browser.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./markdown": "./src/markdown.js",
+    "./json": "./src/json.js"
+  },
+  "files": [
+    "src/",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "author": "Jihwan Kim",
+  "dependencies": {
+    "@pbi-lineage-lenz/viewer": "1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanJihwanKim/pbi-lineage-lenz.git",
+    "directory": "packages/export"
+  },
+  "homepage": "https://github.com/JonathanJihwanKim/pbi-lineage-lenz#readme",
+  "keywords": [
+    "power-bi",
+    "pbip",
+    "markdown",
+    "json",
+    "mermaid",
+    "erd",
+    "documentation"
+  ]
+}

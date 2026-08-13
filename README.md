@@ -1,121 +1,53 @@
-![Model Lenz](docs/hero.png)
+# model-lenz is deprecated
 
-# Model Lenz
-
-*Open-source static analyzer for Power BI PBIP projects. For any DAX measure, it shows every table that measure depends on (directly through the expression, and indirectly through active relationships).*
-
-[![PyPI](https://img.shields.io/pypi/v/model-lenz.svg)](https://pypi.org/project/model-lenz/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-%E2%89%A53.10-blue.svg)](https://www.python.org/downloads/)
-[![GitHub Sponsors](https://img.shields.io/github/sponsors/JonathanJihwanKim?label=Sponsor&logo=GitHub)](https://github.com/sponsors/JonathanJihwanKim)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-%E2%98%95-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jihwankim)
-[![Microsoft MVP](https://img.shields.io/badge/Microsoft-MVP-5E5E5E?logo=microsoft)](https://mvp.microsoft.com/en-us/PublicProfile/5005958)
-
-**If Model Lenz has saved you time on a model review, sponsor here — it takes 30 seconds:**
-
-[![Sponsor on GitHub](https://img.shields.io/badge/GitHub_Sponsors-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/JonathanJihwanKim)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jihwankim)
-
----
-
-## Why Model Lenz
-
-- **One screenshot ends the "which tables does this measure actually touch?" thread.** Direct DAX refs, transitively-resolved sub-measures, and indirectly-walked relationships (with `USERELATIONSHIP` overrides) — all in one graph you can paste into a PR.
-- **Both names on every node, no mode toggle.** A Power BI developer sees the semantic-model name they type in DAX. A data engineer sees the BigQuery FQN / SQL `[schema].[table]` / Snowflake `DB.SCHEMA.TABLE` / file path on the same node. Both sides read the same screenshot.
-- **Diff two PBIPs (or two Git refs) on the graph itself.** Green / amber / red borders on table cards and relationship edges show what changed. Catches the table-set drift that reviewers miss when they read DAX line by line.
-- **Read-only, local, ad-free, no XMLA, no phoning home.** Runs from a single Python wheel. Source control is the only prerequisite.
-
----
-
-## Use it in 30 seconds
+**It has been replaced by [PBI Lineage Lenz](https://github.com/JonathanJihwanKim/pbi-lineage-lenz).**
 
 ```bash
-uv tool install model-lenz                              # or: pipx install model-lenz
-model-lenz demo                                         # bundled 5-table PBIP, opens in browser
-model-lenz serve "C:\path\to\Sales.SemanticModel"      # your own PBIP
+npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
 ```
 
-Nothing to clone. The wheel ships the CLI, the React UI, and a tiny demo PBIP.
+No Python, no virtualenv, no install. Or open a model in your browser with nothing
+installed at all: **https://jonathanjihwankim.github.io/pbi-lineage-lenz/**
 
-Need help with PATH on Windows, updates, path forms, or troubleshooting? → [docs/install.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/install.md)
+## What moved
 
----
+| model-lenz | PBI Lineage Lenz |
+|---|---|
+| `model-lenz serve` | the [web app](https://jonathanjihwankim.github.io/pbi-lineage-lenz/), or a handoff file you can send to someone |
+| `model-lenz check` | `npx pbi-lineage-lenz check` |
+| `model-lenz summary` | `npx pbi-lineage-lenz docs --format md` |
+| `model-lenz export` | `npx pbi-lineage-lenz docs --format md\|json\|html` |
 
-## Sponsor
+Everything model-lenz did is there, plus a model lens that reads table roles from the
+direction of relationships, field parameters followed into the model, Direct Lake support,
+and a self-contained HTML handoff file that opens in any browser with no Power BI and no
+install on the far end.
 
-Model Lenz is free, ad-free, never phones home. Sponsorship is what decides what ships next. Right now your contribution funds:
+## Why
 
-- **`model-lenz check` for CI (v0.4).** Shipped — fails a PR build on broken references, ambiguous propagation paths, or an indirect-table-set blow-up past your threshold. Next up: baseline-drift comparison (`--git` against `main`) so the gate catches a *sudden* blow-up, not just an absolute one.
-- **Annotation layer on sub-graph exports.** Inline reviewer comments on exported SVG / Mermaid attached to a PR.
-- **Snowflake-native-SQL, Databricks, Synapse Serverless connectors.** Each opens a class of warehouses Model Lenz currently labels with low confidence.
+Three tools of mine overlapped — [pbip-documenter](https://github.com/JonathanJihwanKim/pbip-documenter),
+[pbip-lineage-explorer](https://github.com/JonathanJihwanKim/pbip-lineage-explorer) and this
+one. Keeping a Python engine and a JavaScript one in step meant every parser fix had to be
+made twice, and the second one was always late.
 
-If the tool already saved you a model-review headache, that's the trade — one click, one coffee, more features for everyone:
+The JavaScript engine also runs in the browser, which is what makes the handoff file
+possible: one HTML file, no server, and no install for whoever receives it. That was worth
+more than keeping two of everything.
 
-[![Sponsor on GitHub](https://img.shields.io/badge/GitHub_Sponsors-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/JonathanJihwanKim)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jihwankim)
+## If you still need this tool
 
-Sponsor at the $10+ tier and you'll be listed (with your consent) in the [Hall of Sponsors](#hall-of-sponsors). Top tier on GitHub Sponsors includes a 30-minute monthly call with a Microsoft MVP.
+Nothing is deleted. The last released version stays on PyPI forever:
 
----
+```bash
+pip install model-lenz==0.3.2
+```
 
-## What's in the box
+Its source is the [`python-model-lenz`](https://github.com/JonathanJihwanKim/pbi-lineage-lenz/tree/python-model-lenz)
+branch, tagged `v0.3.2`. That branch also carries a little more than 0.3.2 did — the `check`
+gate, tagged `v0.4.0`, which was finished but never released to PyPI.
 
-- **`serve`** — interactive measure-dependency graph for any PBIP. Switch PBIPs in-app via the header **Open…** button; no server restart.
-- **`diff`** — two PBIPs (or two Git refs via `--git`) side-by-side on the same graph canvas, with a List tab for the per-entity audit. → [docs/diff.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/diff.md)
-- **`summary` / `inspect`** — counts, classification breakdown, full parsed model as JSON. CI-friendly.
-- **`check`** — CI gate that fails a PR build on broken references, ambiguous propagation paths, or an indirect-table blow-up. Text / JSON output plus GitHub Actions annotations.
-- **Share + embed** — **Copy link** (selection + depth in URL), **Copy MD** (one-pager handoff card), **Copy Mermaid**, **Download SVG**. Diff exports color both borders and arrows; removed edges render dashed.
+This release — 0.5.0 — does nothing but print that message and exit non-zero. Non-zero on
+purpose: `model-lenz check` was a build gate, and a deprecated version that printed a notice
+and exited 0 would leave a gate that always passes standing where a real check used to be.
 
-Full CLI reference and feature table: [docs/cli.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/cli.md). Concepts and FAQ: [docs/faq.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/faq.md).
-
----
-
-## Roadmap
-
-- **v0.3.x — diff polish.** _Shipped._ Graph-canvas diff, shareable URLs, Markdown handoff cards, Mermaid / SVG exports, Git-ref diff mode. v0.3.2 colored relationship arrows in Mermaid diff exports.
-- **v0.4 — guardrails before the merge.** `model-lenz check` CI gate _(shipped: broken-reference + ambiguous-path + static indirect-table-set blow-up rules; baseline-drift comparison still to come)_ · annotation layer on sub-graph exports.
-- **Later.** DMV / XMLA mode for deployed semantic models · `.pbix` adapter · perspective-aware views · Kimball-style bus-layout auto-arrangement.
-
-> **Not on this roadmap by design:** report-layer (PBIR) measure-usage — which pages and visuals consume each measure. That's what **[PBIP Lineage Explorer](https://github.com/JonathanJihwanKim/pbip-lineage-explorer)** is for.
-
-Have something else you'd like to see? Open a [feature request](https://github.com/JonathanJihwanKim/pbip_model_lenz/issues/new?template=feature_request.yml). [Sponsorship](#sponsor) decides what ships first.
-
----
-
-## Also by Jihwan Kim
-
-- **[PBIP Lineage Explorer](https://github.com/JonathanJihwanKim/pbip-lineage-explorer)**. Trace any visual back to its source columns through DAX. Browser-based, 100% client-side. *"Where does the number on this card actually come from?"*
-- **[PBIP Documenter](https://github.com/JonathanJihwanKim/pbip-documenter)**. Generate bidirectional documentation (measures, tables, relationships, M-steps, native SQL) from PBIP/TMDL in seconds. *"Can I hand someone a readable spec of this model without writing one?"*
-
-Together with Model Lenz, the three tools cover the model side, the report side, and the documentation side of a PBIP project without overlap.
-
----
-
-## More detail when you need it
-
-- **Install / update / troubleshooting:** [docs/install.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/install.md)
-- **CLI reference + feature table:** [docs/cli.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/cli.md)
-- **Diff walkthrough + share / export buttons:** [docs/diff.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/diff.md)
-- **FAQ + concept primer:** [docs/faq.md](https://github.com/JonathanJihwanKim/pbip_model_lenz/blob/main/docs/faq.md)
-- **Architecture + contributor tour:** [CONTRIBUTING.md](CONTRIBUTING.md)
-
----
-
-## Support development
-
-Free tools survive when the people who get value from them give back. If Model Lenz saved you time on a model review, an audit, or a *"wait, where does this column actually come from?"* conversation, here's where:
-
-[![Sponsor on GitHub](https://img.shields.io/badge/GitHub_Sponsors-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/JonathanJihwanKim)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jihwankim)
-
-GitHub Sponsors runs $2 / $5 / $10 / $25 / $50 per month. Buy Me a Coffee is one-time, any amount. Both go to the same person.
-
-### Hall of Sponsors
-
-*Your name here. Sponsor at the $10+ tier and you'll be listed (with your consent) here on the README and on the project website.*
-
----
-
-## License
-
-[MIT](LICENSE). Use it commercially, fork it, ship it inside whatever you're building. Attribution appreciated but not required.
+MIT © Jihwan Kim

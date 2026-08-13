@@ -1,25 +1,26 @@
 name: Publish to PyPI
 
-# Triggered by pushing a version tag (e.g. `v0.1.0`) or manually.
+# The final model-lenz release: a deprecation notice pointing at PBI Lineage Lenz.
 #
-# Setup (one-time, by repo owner):
-#   1. Create the project on PyPI: https://pypi.org/manage/account/publishing/
-#   2. Add a "Trusted Publisher" with:
-#        Owner:                   JonathanJihwanKim
-#        Repository name:         pbip_model_lenz
-#        Workflow filename:       release.yml
-#        Environment name:        pypi
-#   3. In GitHub repo settings -> Environments, create an environment named
-#      "pypi" with a required reviewer (yourself) so a release pause for
-#      manual approval before publishing.
+# ⚠️ BEFORE PUSHING THE TAG — update the PyPI Trusted Publisher.
 #
-# Once configured, no API token or password is needed — PyPI mints a short-
-# lived token from the GitHub OIDC identity for each run.
+# It was configured against the repository name `pbip_model_lenz`, and this repository
+# has since been renamed to `pbi-lineage-lenz`. PyPI matches the OIDC claim on the
+# repository name, so the publish will be rejected until it is updated:
+#
+#   https://pypi.org/manage/project/model-lenz/settings/publishing/
+#     Owner:              JonathanJihwanKim
+#     Repository name:    pbi-lineage-lenz      <- was pbip_model_lenz
+#     Workflow filename:  release.yml
+#     Environment name:   pypi
+#
+# The `pypi` environment has a required reviewer, so the run pauses for approval
+# before anything is uploaded.
 
 on:
   push:
     tags:
-      - "v*"
+      - "v0.5.*"
   workflow_dispatch:
     inputs:
       target:
@@ -42,40 +43,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Build frontend bundle
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install hatch
-        run: pip install hatch
+      - run: pip install hatch
 
-      - name: Build distributions
-        run: hatch build
+      - run: hatch build
 
-      - name: Verify wheel installs and CLI runs
+      # The package has exactly one behaviour, so this asserts exactly that: the notice
+      # names its replacement, and the command fails rather than quietly succeeding.
+      # `model-lenz check` was a build gate; a deprecated release that exited 0 would
+      # leave a gate that always passes standing where a real check used to be.
+      - name: Verify the wheel does the one thing it should
         run: |
           python -m venv check_env
-          ./check_env/bin/pip install --upgrade pip
-          ./check_env/bin/pip install dist/model_lenz-*.whl
-          ./check_env/bin/model-lenz version
-          ./check_env/bin/model-lenz summary examples/tiny_pbip
+          ./check_env/bin/pip install --quiet dist/model_lenz-*.whl
+          ./check_env/bin/model-lenz 2> notice.txt && { echo "::error::exited 0"; exit 1; }
+          grep -q "npx pbi-lineage-lenz" notice.txt || { echo "::error::no replacement named"; exit 1; }
+          grep -q "model-lenz==0.3.2" notice.txt || { echo "::error::no pin for the old release"; exit 1; }
+          cat notice.txt
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      # No runtime dependencies is the point — the working release pulled in fastapi,
+      # uvicorn, pydantic, networkx and typer.
+      - name: Verify it installs nothing else
+        run: |
+          installed=$(./check_env/bin/pip list --format=freeze --exclude-editable \
+            | grep -Ev '^(pip|setuptools|wheel)==' || true)
+          echo "installed: $installed"
+          test "$installed" = "model-lenz==0.5.0"
+
+      - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
@@ -96,8 +94,7 @@ jobs:
         with:
           name: dist
           path: dist/
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
 
@@ -118,24 +115,9 @@ jobs:
         with:
           name: dist
           path: dist/
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@release/v1
 
-  github-release:
-    name: Attach artifacts to GitHub release
-    needs: [publish-pypi]
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          generate_release_notes: true
-          fail_on_unmatched_files: true
+# There is deliberately no GitHub release job here. The old one used
+# softprops/action-gh-release, which marks what it creates as the *latest* release by
+# default — so tagging this deprecation stub would have quietly demoted PBI Lineage Lenz
+# 1.0.0 on the repository front page in favour of a package that does nothing.

@@ -1,5 +1,5 @@
 """
-The entire behaviour of model-lenz 0.5.0: say where the tool went, and exit non-zero.
+The entire behaviour of model-lenz 0.5.x: say where the tool went, and exit non-zero.
 
 Exiting non-zero is deliberate. The command people most often automated was
 `model-lenz check`, a gate that fails a build on a broken reference. A deprecated
@@ -38,7 +38,7 @@ NOTICE = """
   Nothing is being deleted. If you depend on this tool, pin the last working
   release:
 
-      pip install model-lenz==0.3.2
+      pip install model-lenz==0.4.0
 
   Source, docs and issues:
   https://github.com/JonathanJihwanKim/pbi-lineage-lenz

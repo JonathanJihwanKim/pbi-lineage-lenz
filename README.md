@@ -36,17 +36,16 @@ more than keeping two of everything.
 
 ## If you still need this tool
 
-Nothing is deleted. The last released version stays on PyPI forever:
+Nothing is deleted. The last working release stays on PyPI forever:
 
 ```bash
-pip install model-lenz==0.3.2
+pip install model-lenz==0.4.0
 ```
 
 Its source is the [`python-model-lenz`](https://github.com/JonathanJihwanKim/pbi-lineage-lenz/tree/python-model-lenz)
-branch, tagged `v0.3.2`. That branch also carries a little more than 0.3.2 did — the `check`
-gate, tagged `v0.4.0`, which was finished but never released to PyPI.
+branch, tagged [`v0.4.0`](https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/tag/v0.4.0).
 
-This release — 0.5.0 — does nothing but print that message and exit non-zero. Non-zero on
+This release — 0.5.1 — does nothing but print that message and exit non-zero. Non-zero on
 purpose: `model-lenz check` was a build gate, and a deprecated version that printed a notice
 and exited 0 would leave a gate that always passes standing where a real check used to be.
 

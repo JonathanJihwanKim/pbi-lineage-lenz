@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "model-lenz"
-version = "0.5.0"
-description = "DEPRECATED — replaced by PBI Lineage Lenz. Use `npx pbi-lineage-lenz` instead. Pin model-lenz==0.3.2 for the last working release."
+version = "0.5.1"
+description = "DEPRECATED — replaced by PBI Lineage Lenz. Use `npx pbi-lineage-lenz` instead. Pin model-lenz==0.4.0 for the last working release."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -34,7 +34,7 @@ Homepage = "https://github.com/JonathanJihwanKim/pbi-lineage-lenz"
 Repository = "https://github.com/JonathanJihwanKim/pbi-lineage-lenz"
 Issues = "https://github.com/JonathanJihwanKim/pbi-lineage-lenz/issues"
 "Replaced by" = "https://www.npmjs.com/package/pbi-lineage-lenz"
-"Last working release" = "https://pypi.org/project/model-lenz/0.3.2/"
+"Last working release" = "https://pypi.org/project/model-lenz/0.4.0/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/model_lenz"]

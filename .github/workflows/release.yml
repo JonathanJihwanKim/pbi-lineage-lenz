@@ -61,7 +61,7 @@ jobs:
           ./check_env/bin/pip install --quiet dist/model_lenz-*.whl
           ./check_env/bin/model-lenz 2> notice.txt && { echo "::error::exited 0"; exit 1; }
           grep -q "npx pbi-lineage-lenz" notice.txt || { echo "::error::no replacement named"; exit 1; }
-          grep -q "model-lenz==0.3.2" notice.txt || { echo "::error::no pin for the old release"; exit 1; }
+          grep -q "model-lenz==0.4.0" notice.txt || { echo "::error::no pin for the old release"; exit 1; }
           cat notice.txt
 
       # No runtime dependencies is the point — the working release pulled in fastapi,
@@ -71,7 +71,7 @@ jobs:
           installed=$(./check_env/bin/pip list --format=freeze --exclude-editable \
             | grep -Ev '^(pip|setuptools|wheel)==' || true)
           echo "installed: $installed"
-          test "$installed" = "model-lenz==0.5.0"
+          test "$installed" = "model-lenz==0.5.1"
 
       - uses: actions/upload-artifact@v4
         with:

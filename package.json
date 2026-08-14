@@ -1,5 +1,5 @@
 {
-  "name": "pbi-lineage-lenz",
+  "name": "pbi-lineage-lenz-monorepo",
   "version": "1.1.0",
   "description": "Find the lineage, understand the model, document both. For the BI developer and the data engineer: trace every column to its physical source, generate documentation that cannot go stale, and hand it over as one self-contained HTML file.",
   "type": "module",

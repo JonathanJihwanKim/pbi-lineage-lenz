@@ -65,7 +65,8 @@ the behaviour the README describes is demonstrated and a regression fails the bu
 `samples/sample-pbip` is restructured into a real PBIP layout; its report was previously
 unreachable through the CLI.
 
-`npm test` is 577 tests.
+`npm test` is 533 tests in the repository, plus 44 against a private production model
+that live on the maintainer's disk and skip themselves everywhere else.
 
 ## 1.0.1 — `pbi-lineage-lenz` only
 

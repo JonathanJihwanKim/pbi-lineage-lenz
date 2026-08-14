@@ -389,7 +389,9 @@ send. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```bash
 npm install
-npm test                # 567 tests, on Linux and Windows
+npm test                # 533 tests, on Linux and Windows
+                        # plus 44 more against a private production model, on the
+                        # maintainer's disk only — they skip themselves everywhere else
 npm run dev             # the web app
 npm run build           # the web app, for GitHub Pages
 ```

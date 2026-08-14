@@ -18,7 +18,11 @@ permissions:
   pull-requests: write
 
 env:
-  PROJECT_PATH: .
+  # In your own repository this is `.` — the folder holding your `.SemanticModel` and
+  # `.Report` folders. This repository is the tool rather than a PBIP project, so it runs
+  # against the bundled sample instead; that also means every push exercises the workflow
+  # it ships, which is the only way a template like this stays correct.
+  PROJECT_PATH: samples/contoso
 
 jobs:
   handoff:

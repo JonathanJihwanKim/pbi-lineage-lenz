@@ -19,4 +19,6 @@ ref table store
 ref table date
 ref table 'Monthly Sales Summary'
 ref table 'Margin Tier by customer'
+ref table 'Time Intelligence'
+ref table 'Metric Selection'
 

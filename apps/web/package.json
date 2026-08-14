@@ -1,6 +1,6 @@
 {
   "name": "@pbi-lineage-lenz/web",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Browser app for PBI Lineage Lenz — open a PBIP folder, read the model, and export a self-contained handoff file. Nothing is uploaded.",
   "type": "module",
   "private": true,
@@ -10,10 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@pbi-lineage-lenz/core": "1.0.0",
-    "@pbi-lineage-lenz/handoff": "1.0.0",
-    "@pbi-lineage-lenz/viewer": "1.0.0",
-    "@pbi-lineage-lenz/export": "1.0.0"
+    "@pbi-lineage-lenz/core": "1.1.0",
+    "@pbi-lineage-lenz/handoff": "1.1.0",
+    "@pbi-lineage-lenz/viewer": "1.1.0",
+    "@pbi-lineage-lenz/export": "1.1.0"
   },
   "devDependencies": {
     "vite": "^7.0.0"

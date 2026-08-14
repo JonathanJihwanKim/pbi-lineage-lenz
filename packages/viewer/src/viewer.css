@@ -9,6 +9,14 @@
  * which must make zero network requests and stay small enough to forward.
  */
 
+/*
+ * Every colour below carries at least 4.5:1 against `--ground`, `--panel` and `--raised`
+ * in its own theme — WCAG AA for normal text, checked at the value, not eyeballed. The
+ * numbers in the comments are the worst of those three, and they are written down because
+ * this is the exact thing that erodes: `--ink-4` was 2.09:1 and rendered every "no source"
+ * placeholder, which made the tool's *unknown* state the least readable thing on screen.
+ * If you darken one of these, re-check it.
+ */
 :root {
   /* Ground — cool, desaturated, blueprint-under-low-light. */
   --ground: #0b0f14;
@@ -21,31 +29,45 @@
   --rule-strong: #2b3d4f;
   --rule-faint: #151f29;
 
-  /* Ink */
-  --ink: #e3ecf4;
-  --ink-2: #93a6b8;
-  --ink-3: #5d7183;
-  --ink-4: #3d4d5c;
+  /*
+   * Ink. Four steps, and the bottom two used to spend their range below AA — which is not
+   * a ramp, it is two shades of unreadable. The ramp is compressed rather than extended:
+   * de-emphasis is carried by weight and size as well as by lightness.
+   */
+  --ink: #e3ecf4;    /* 13.8:1 */
+  --ink-2: #93a6b8;  /*  6.6:1 */
+  --ink-3: #8397a9;  /*  5.5:1 — 10px uppercase micro-labels; not "large text" */
+  --ink-4: #78899b;  /*  4.6:1 — placeholders and "no source" */
 
   /* Sharp warm accent against the cool ground. */
-  --accent: #ff6b4a;
+  --accent: #ff6b4a; /*  5.8:1 */
   --accent-dim: #b8452c;
   --accent-glow: rgba(255, 107, 74, 0.14);
 
   /* Confidence signal. The centrepiece of the whole tool. */
-  --exact: #3ddc97;
-  --inferred: #f2b544;
-  --unknown: #6b7a8a;
-  --computed: #8ab4f8;
+  --exact: #3ddc97;    /* 9.3:1 */
+  --inferred: #f2b544; /* 9.0:1 */
+  --unknown: #8f9eae;  /* 6.0:1 */
+  --computed: #8ab4f8; /* 7.8:1 */
 
   --exact-bg: rgba(61, 220, 151, 0.10);
   --inferred-bg: rgba(242, 181, 68, 0.10);
-  --unknown-bg: rgba(107, 122, 138, 0.10);
+  --unknown-bg: rgba(143, 158, 174, 0.10);
   --computed-bg: rgba(138, 180, 248, 0.10);
 
   /* Vocabulary sides: model names vs physical names. */
   --model-tint: #c3a6ff;
   --source-tint: #66d9e8;
+
+  /*
+   * Model machinery — a field parameter or a calculation group. A category, not a
+   * confidence and not a vocabulary, so it gets its own hue rather than borrowing one.
+   * Orchid, chosen for what it is *not* next to: far enough from the warm accent that a
+   * category marker never reads as a warning, and far enough from the violet of a model
+   * name and the cyan of a physical one to stay a third thing.
+   */
+  --defined-tint: #d7a1dd; /* 7.9:1 */
+  --defined-bg: rgba(215, 161, 221, 0.10);
 
   --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   --sans: "Segoe UI Variable Display", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
@@ -68,27 +90,30 @@
   --rule-strong: #b3c0cc;
   --rule-faint: #e3e9ef;
 
-  --ink: #16202b;
-  --ink-2: #4a5a6a;
-  --ink-3: #6d7f8f;
-  --ink-4: #97a6b4;
+  --ink: #16202b;    /* 14.5:1 */
+  --ink-2: #4a5a6a;  /*  6.3:1 */
+  --ink-3: #556575;  /*  5.3:1 */
+  --ink-4: #5f6d7b;  /*  4.7:1 */
 
-  --accent: #d4381a;
+  --accent: #c43314; /*  4.8:1 */
   --accent-dim: #a82c14;
-  --accent-glow: rgba(212, 56, 26, 0.10);
+  --accent-glow: rgba(196, 51, 20, 0.10);
 
-  --exact: #0f8f5b;
-  --inferred: #a4720a;
-  --unknown: #6b7a8a;
-  --computed: #2a62c4;
+  --exact: #077046;    /* 5.4:1 */
+  --inferred: #8a5f00; /* 5.0:1 */
+  --unknown: #556370;  /* 5.4:1 */
+  --computed: #2a62c4; /* 5.1:1 */
 
-  --exact-bg: rgba(15, 143, 91, 0.09);
-  --inferred-bg: rgba(164, 114, 10, 0.10);
-  --unknown-bg: rgba(107, 122, 138, 0.09);
+  --exact-bg: rgba(7, 112, 70, 0.09);
+  --inferred-bg: rgba(138, 95, 0, 0.10);
+  --unknown-bg: rgba(85, 99, 112, 0.09);
   --computed-bg: rgba(42, 98, 196, 0.09);
 
-  --model-tint: #6b3fc4;
-  --source-tint: #0d7a8a;
+  --model-tint: #6b3fc4;  /* 5.9:1 */
+  --source-tint: #0a6b79; /* 5.5:1 */
+
+  --defined-tint: #8e3a86; /* 6.0:1 */
+  --defined-bg: rgba(142, 58, 134, 0.09);
 
   --shadow-panel: 0 1px 2px rgba(22, 32, 43, 0.06), 0 8px 24px rgba(22, 32, 43, 0.07);
 }
@@ -340,14 +365,28 @@ body.lenz {
   white-space: nowrap;
   border: 1px solid transparent;
 }
-.conf::before { content: ""; width: 5px; height: 5px; border-radius: 50%; flex: none; }
+/*
+ * The marker carries the state as a *shape*, not only as a hue.
+ *
+ * `exact` was a green dot and `inferred` an amber one, distinguished by colour alone —
+ * and green and amber are the pair that converges under deuteranopia, which is around 8%
+ * of men. That put the tool's central signal, the one the whole "how sure are we?" promise
+ * rests on, out of reach of a sizeable part of its audience. Solid / half / hollow reads
+ * the same in greyscale, so the colour is now reinforcement rather than the message.
+ */
+.conf::before { content: ""; width: 6px; height: 6px; border-radius: 50%; flex: none; }
 
 .conf-exact    { color: var(--exact);    background: var(--exact-bg);    border-color: color-mix(in srgb, var(--exact) 26%, transparent); }
 .conf-inferred { color: var(--inferred); background: var(--inferred-bg); border-color: color-mix(in srgb, var(--inferred) 26%, transparent); }
 .conf-unknown  { color: var(--unknown);  background: var(--unknown-bg);  border-color: color-mix(in srgb, var(--unknown) 26%, transparent); }
 
+/* Solid: stated by the model. */
 .conf-exact::before    { background: var(--exact); }
-.conf-inferred::before { background: var(--inferred); }
+/* Half-filled: the answer is half deduced. The shape says so before the colour does. */
+.conf-inferred::before {
+  background: linear-gradient(to right, var(--inferred) 50%, transparent 50%);
+  border: 1px solid var(--inferred);
+}
 /* Unknown reads as an absence, not an alarm: hollow marker, no fill. */
 .conf-unknown::before  { background: none; border: 1px solid var(--unknown); }
 
@@ -362,8 +401,46 @@ body.lenz {
 }
 .conf-bar span { display: block; height: 100%; }
 .conf-bar .s-exact { background: var(--exact); }
-.conf-bar .s-inferred { background: var(--inferred); }
+/* Hatched for the same reason the chip is half-filled: legible without colour vision. */
+.conf-bar .s-inferred {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--inferred) 0 2px,
+    color-mix(in srgb, var(--inferred) 45%, transparent) 2px 4px);
+}
 .conf-bar .s-unknown { background: color-mix(in srgb, var(--unknown) 55%, transparent); }
+
+/* ------------------------------------------------------ model machinery -- */
+
+/*
+ * A field parameter or a calculation group. Marked wherever one appears, because both
+ * read as ordinary tables until you know what they are — and both change what every other
+ * number on the page means.
+ */
+.kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 2px;
+  white-space: nowrap;
+  color: var(--defined-tint);
+  background: var(--defined-bg);
+  border: 1px solid color-mix(in srgb, var(--defined-tint) 30%, transparent);
+}
+/* A square marker, so it is not mistaken for a confidence pill at a glance. */
+.kind::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: var(--defined-tint);
+}
+.kind-calculationGroup::before { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 
 /* --------------------------------------------------------------- table -- */
 
@@ -844,3 +921,83 @@ tr:hover .copy-link, .copy-link:focus-visible { opacity: 1; }
   text-transform: uppercase;
   font-family: var(--mono);
 }
+
+/* ── Overview lens ───────────────────────────────────────────────────────────
+   The one screen that is prose rather than a table. It opens first, so it is
+   also the first impression of whether this tool is careful — which is why
+   every number on it is arithmetic over the payload and nothing on it is a
+   score, a grade, or an opinion. */
+
+/* Two columns where there is room: the summary reads down the left, the list of
+   things to go and look at sits beside it rather than below the fold. Below
+   1100px it stacks, and the prose column never exceeds a comfortable measure. */
+.overview {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+@media (min-width: 1100px) {
+  .overview {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  /* The two summary panels share the left column; the observations take the right
+     and run the full height beside them. */
+  .overview > .panel:nth-child(3) { grid-column: 2; grid-row: 1 / span 2; }
+}
+
+/* Larger than body text and no wider than a comfortable measure: this is the
+   only place in the app somebody reads a sentence rather than scanning a row. */
+.overview-lead {
+  margin: 0 0 10px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.overview-lead b { font-weight: 600; }
+
+.observation {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 10px;
+  margin: 0 -10px;
+  border-radius: var(--radius);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 120ms var(--ease);
+}
+.observation:hover, .observation:focus-visible {
+  background: var(--raised);
+  color: var(--ink);
+  outline: none;
+}
+/* The count leads, right-aligned in a fixed column, so a stack of observations
+   scans down the numbers rather than down the sentences. */
+.observation-count {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 3ch;
+  text-align: right;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A calculation group is the one thing that makes a measure's own DAX an
+   incomplete answer, so the note that says so is the one callout in the app
+   that is allowed to interrupt. Rose, matching the machinery chip, because it
+   is a statement of category rather than a warning about quality. */
+.note-calcgroup {
+  margin: 14px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--defined-tint) 30%, transparent);
+  border-left-width: 3px;
+  background: var(--defined-bg);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.note-calcgroup b { color: var(--defined-tint); font-weight: 600; }

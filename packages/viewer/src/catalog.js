@@ -208,6 +208,13 @@ export function catalogLens({ model, index, names, linkFor, onOpenVisual }) {
 
       measure.expression ? h('pre.code', { html: highlightDax(measure.expression) }) : null,
 
+      // The DAX above is not the whole story where a calculation group is in play: the
+      // group's item wraps `SELECTEDMEASURE()` around it, so the number on the page is not
+      // the number this expression computes. Nothing in the measure says so, which is
+      // exactly why it has to be said here — someone editing this measure and checking
+      // that visual would otherwise conclude their change had no effect.
+      ...calculationGroupNote(measure, model),
+
       h('div.label', { style: { margin: '16px 0 7px' } },
         `physical columns (${columns.length})`),
       columns.length > 0
@@ -254,6 +261,29 @@ export function catalogLens({ model, index, names, linkFor, onOpenVisual }) {
   renderDetail(null);
 
   return { el, select, destroy: () => currentGraph?.destroy() };
+}
+
+/**
+ * "This measure is rewritten on N of the M visuals that show it."
+ *
+ * Empty for the overwhelming majority of measures, and that is the point: it appears
+ * only where the answer to "does my DAX describe what is on the page?" is no.
+ */
+function calculationGroupNote(measure, model) {
+  const groups = measure.underCalculationGroups || [];
+  if (groups.length === 0) return [];
+
+  const shown = measure.usedByVisuals.length;
+  const affected = (model.visuals || []).filter((visual) =>
+    visual.appliesCalculationGroups?.length > 0
+    && visual.fields.some((f) => f.ref === measure.ref)).length;
+
+  const names = groups.map((g) => `"${g}"`).join(' and ');
+  return [h('div.note-calcgroup',
+    h('b', 'Rewritten by a calculation group.'),
+    ` ${affected} of the ${shown} visual${shown === 1 ? '' : 's'} showing this measure `
+    + `also bind${affected === 1 ? 's' : ''} ${names}, so what they display is this `
+    + 'expression wrapped in the selected calculation item — not this expression.')];
 }
 
 /** Columns a measure reads, split by whether their physical origin is known. */

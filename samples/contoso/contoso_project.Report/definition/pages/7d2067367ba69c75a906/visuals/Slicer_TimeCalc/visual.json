@@ -1,0 +1,39 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "Slicer_TimeCalc",
+  "position": {
+    "x": 20,
+    "y": 400,
+    "z": 5,
+    "height": 280,
+    "width": 260,
+    "tabOrder": 8
+  },
+  "visual": {
+    "visualType": "slicer",
+    "title": "Time calculation",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Time Intelligence"
+                    }
+                  },
+                  "Property": "Time calculation"
+                }
+              },
+              "queryRef": "Time Intelligence.Time calculation",
+              "nativeQueryRef": "Time calculation"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

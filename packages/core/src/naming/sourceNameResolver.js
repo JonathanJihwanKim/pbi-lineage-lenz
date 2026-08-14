@@ -25,6 +25,7 @@ import {
   extractSqlTablePath,
   stepAffectsColumnNames,
 } from '../parser/mquery.js';
+import { isFieldParameterTable } from '../parser/fieldParameters.js';
 
 /**
  * How much to trust the `physical` mapping on a resolved column.
@@ -52,6 +53,15 @@ export const ORIGIN = Object.freeze({
   COMPUTED_PQ: 'computed-pq',
   /** Computed in the model by a DAX calculated column. */
   COMPUTED_DAX: 'computed-dax',
+  /**
+   * Model machinery rather than data: a field parameter's list of `NAMEOF` references, or
+   * a calculation group's items. The values are the model's own metadata, so there is no
+   * source column to find and no sense in which the tool failed to find one.
+   *
+   * Kept apart from `computed-dax` because the two are different answers to "why is there
+   * no physical column here?" — one is a calculation over data, the other is not data.
+   */
+  MODEL_DEFINED: 'model-defined',
   /** Physical origin could not be established. */
   UNRESOLVED: 'unresolved',
 });
@@ -257,6 +267,12 @@ export function resolveSourceNames(parsedModel) {
 function resolveTable(table, ctx) {
   const { expressionBodies, declaredParams, paramValues, expressions, tableNames } = ctx;
 
+  // Field parameters and calculation groups are model machinery, not data. They come
+  // first because every branch below asks "what physical object does this read?", and for
+  // these the honest answer is "none, and that is not a gap".
+  const modelDefined = modelDefinedKind(table);
+  if (modelDefined) return resolveModelDefinedTable(table, modelDefined);
+
   // Prefer refreshPolicy.sourceExpression (incremental refresh), else the first partition.
   // A Direct Lake table names its physical object in the partition itself, with no query
   // to walk and no step that could rename anything. It is the most certain shape there is,
@@ -376,6 +392,79 @@ function resolveTable(table, ctx) {
       isCalculatedTable: !!table.isCalculated,
     },
     columns: resolvedColumns,
+  };
+}
+
+/**
+ * Is this table model machinery rather than data? Returns the kind, or null.
+ *
+ * Deliberately narrow. The test is *not* "is this a calculated table" — plenty of
+ * calculated tables genuinely read from a source and trace all the way through, and
+ * `Margin Tier by customer` in the bundled sample is one. It is specifically the two
+ * shapes whose rows are the model's own metadata:
+ *
+ *   - a field parameter, whose partition is a list of `NAMEOF` references
+ *   - a calculation group, whose rows are its calculation items
+ *
+ * Before this, all 67 such columns in a real 61-table model resolved to `unknown` with
+ * the reason "No physical table could be resolved from the Power Query expression" —
+ * which is not merely unhelpful but false, because there is no Power Query expression to
+ * resolve. They were 81% of everything the tool reported as untraced, and they dragged a
+ * genuine 96% coverage down to a reported 82%. Counting a table that cannot have a source
+ * as a failure to find its source makes the headline number mean less, not more.
+ *
+ * @returns {'fieldParameter'|'calculationGroup'|null}
+ */
+export function modelDefinedKind(table) {
+  if (!table) return null;
+  if (table.calculationGroup || (table.calculationItems || []).length > 0) return 'calculationGroup';
+  if (isFieldParameterTable(table)) return 'fieldParameter';
+  return null;
+}
+
+/** A field parameter or a calculation group: every column is metadata, and exactly so. */
+function resolveModelDefinedTable(table, kind) {
+  const reason = kind === 'calculationGroup'
+    ? 'A calculation group column: its rows are the group\'s calculation items, '
+      + 'defined in the model rather than read from a source.'
+    : 'A field parameter column: its rows are the fields the parameter offers, '
+      + 'defined in DAX with NAMEOF rather than read from a source.';
+
+  const columns = [
+    ...(table.columns || []),
+    ...(table.calculatedColumns || []).filter(
+      (extra) => !(table.columns || []).some((column) => column.name === extra.name)),
+  ].map((column) => ({
+    modelRef: `${table.name}[${column.name}]`,
+    modelTable: table.name,
+    modelColumn: column.name,
+    dataType: column.dataType ?? null,
+    pqName: null,
+    physical: null,
+    physicalPath: null,
+    origin: ORIGIN.MODEL_DEFINED,
+    // "There is no physical column, and that is certain" is an exact answer, the same way
+    // it is for a DAX calculated column.
+    confidence: CONFIDENCE.EXACT,
+    reason,
+  }));
+
+  return {
+    derivedFrom: null,
+    table: {
+      name: table.name,
+      physical: null,
+      physicalPath: null,
+      sources: [],
+      steps: [],
+      renames: [],
+      joins: [],
+      addedColumns: [],
+      selectedColumns: null,
+      isCalculatedTable: true,
+      modelDefined: kind,
+    },
+    columns,
   };
 }
 
@@ -1007,13 +1096,18 @@ function deducedReason(premise) {
  * in DAX and has no physical source" is an exact answer, so a calculated column is
  * `exact`, and that is right.
  *
- * `sourced` / `computed` / `unresolved` is where the values come from. Coverage belongs on
- * this axis, and it used to be computed on the other one: 390 of 473 counted as resolved
- * while only 384 carried a physical path, because the 6 computed columns were exact about
- * having no source and got counted as traced anyway. A headline that disagrees with the
- * source map underneath it is the kind of small dishonesty that costs the whole tool its
- * credibility, so coverage is now `sourced / (sourced + unresolved)` — of the columns that
- * do read from a source, how many were traced.
+ * `sourced` / `computed` / `modelDefined` / `unresolved` is where the values come from.
+ * Coverage belongs on this axis, and it used to be computed on the other one: 390 of 473
+ * counted as resolved while only 384 carried a physical path, because the 6 computed
+ * columns were exact about having no source and got counted as traced anyway. A headline
+ * that disagrees with the source map underneath it is the kind of small dishonesty that
+ * costs the whole tool its credibility, so coverage is `sourced / (sourced + unresolved)`
+ * — of the columns that do read from a source, how many were traced.
+ *
+ * `modelDefined` is reported separately from `computed` even though neither counts against
+ * coverage, because the two invite different reactions. A calculated column with no source
+ * is a modelling decision worth reading; a field parameter's three columns are plumbing,
+ * and a reader who sees 65 of them listed as findings learns to skim the list.
  */
 function summarize(columns) {
   let exact = 0;
@@ -1021,6 +1115,7 @@ function summarize(columns) {
   let unknown = 0;
   let sourced = 0;
   let computed = 0;
+  let modelDefined = 0;
   let unresolved = 0;
 
   for (const col of columns.values()) {
@@ -1030,6 +1125,7 @@ function summarize(columns) {
 
     if (col.origin === ORIGIN.SOURCE) sourced++;
     else if (col.origin === ORIGIN.UNRESOLVED) unresolved++;
+    else if (col.origin === ORIGIN.MODEL_DEFINED) modelDefined++;
     else computed++;
   }
 
@@ -1041,6 +1137,7 @@ function summarize(columns) {
     unknown,
     sourced,
     computed,
+    modelDefined,
     unresolved,
     coverage: traceable === 0 ? 0 : Math.round((sourced / traceable) * 1000) / 1000,
   };

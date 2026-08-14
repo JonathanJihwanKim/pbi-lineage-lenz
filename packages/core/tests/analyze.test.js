@@ -26,8 +26,8 @@ describe('analyze (integration)', () => {
   beforeAll(() => {
     // Read sample PBIP files from disk
     const sampleRoot = join(__dirname, '../../../samples/sample-pbip');
-    modelFiles = readFilesRecursive(join(sampleRoot, 'definition'), '');
-    reportFiles = readFilesRecursive(join(sampleRoot, 'report/definition'), '');
+    modelFiles = readFilesRecursive(join(sampleRoot, 'Sample.SemanticModel/definition'), '');
+    reportFiles = readFilesRecursive(join(sampleRoot, 'Sample.Report/definition'), '');
   });
 
   it('parses the sample project without errors', () => {
@@ -181,8 +181,8 @@ describe('traceVisualLineage – calculation groups', () => {
 
   beforeAll(() => {
     const sampleRoot = join(__dirname, '../../../samples/sample-pbip');
-    const modelFiles = readFilesRecursive(join(sampleRoot, 'definition'), '');
-    const reportFiles = readFilesRecursive(join(sampleRoot, 'report/definition'), '');
+    const modelFiles = readFilesRecursive(join(sampleRoot, 'Sample.SemanticModel/definition'), '');
+    const reportFiles = readFilesRecursive(join(sampleRoot, 'Sample.Report/definition'), '');
     const modelStructure = identifyProjectStructure(modelFiles);
     const reportStructure = identifyProjectStructure(reportFiles);
     ({ graph } = analyze({ modelStructure, reportStructure }));

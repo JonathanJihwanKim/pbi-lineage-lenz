@@ -11,7 +11,23 @@
  */
 
 /** Bump when the payload shape changes incompatibly. */
-export const VIEWER_MODEL_VERSION = 1;
+export const VIEWER_MODEL_VERSION = 2;
+
+/**
+ * What a table is, beyond its rows.
+ *
+ * A field parameter and a calculation group are model machinery: they carry no data of
+ * their own, they cannot have a physical source, and they change what every *other* table
+ * shows. The core detected both from the first release and the viewer payload dropped
+ * them, so a reader met a two-column table called `NPM go live after` with no measures and
+ * no source and nothing anywhere saying that picking a row from it rewrites every measure
+ * in the visual.
+ */
+export const TABLE_KIND = Object.freeze({
+  TABLE: 'table',
+  FIELD_PARAMETER: 'fieldParameter',
+  CALCULATION_GROUP: 'calculationGroup',
+});
 
 /** Stable id for a model object, used as both map key and URL fragment. */
 export const refs = {
@@ -52,17 +68,21 @@ export function parseRef(ref) {
  * @returns {object} JSON-serializable viewer model.
  */
 export function toViewerModel(analysis, meta = {}) {
-  const { model, report, graph, stats, sourceNames, dataSources, bookmarks } = analysis;
+  const {
+    model, report, graph, stats, sourceNames, dataSources, bookmarks,
+    enrichments, fieldParameters,
+  } = analysis;
 
-  const tables = buildTables(model, sourceNames);
+  const tables = buildTables(model, sourceNames, enrichments, fieldParameters);
   const columns = buildColumns(model, sourceNames);
   const measures = buildMeasures(model, graph);
-  const visuals = buildVisuals(report);
+  const visuals = buildVisuals(report, enrichments);
   const pages = buildPages(report, visuals);
   const sources = buildSources(dataSources);
   const relationships = buildRelationships(model);
 
   linkMeasureUsage(measures, visuals);
+  linkCalculationGroups(measures, visuals);
 
   return {
     version: VIEWER_MODEL_VERSION,
@@ -93,12 +113,46 @@ export function toViewerModel(analysis, meta = {}) {
   };
 }
 
-function buildTables(model, sourceNames) {
+function buildTables(model, sourceNames, enrichments, fieldParameters) {
+  // Keyed by table name. Both come from `analyze()`, so the viewer says exactly what the
+  // visual expansion and the source resolver already acted on.
+  const calcGroups = new Map(
+    (enrichments?.calculationGroups || []).map((cg) => [cg.tableName, cg]));
+  const offers = fieldParameters instanceof Map
+    ? fieldParameters
+    : new Map(Object.entries(fieldParameters || {}));
+
   return (model?.tables || []).map((table) => {
     const resolved = sourceNames?.tables?.get(table.name);
+    const calcGroup = calcGroups.get(table.name);
+    const offered = offers.get(table.name);
+
+    const kind = calcGroup
+      ? TABLE_KIND.CALCULATION_GROUP
+      : offered
+        ? TABLE_KIND.FIELD_PARAMETER
+        : TABLE_KIND.TABLE;
+
     return {
       ref: refs.table(table.name),
       name: table.name,
+      kind,
+      // A calculation group's items, with the DAX that rewrites the selected measure.
+      // This is the whole content of such a table and it was not in the payload at all.
+      calculationItems: (calcGroup?.items || []).map((item) => ({
+        name: item.name,
+        expression: item.expression ?? null,
+      })),
+      // What a field parameter offers, resolved against the model: the fields a slicer can
+      // put on a visual that binds it. Refs so they link like anything else.
+      offers: (offered || []).map((entry) => ({
+        kind: entry.type,
+        table: entry.table,
+        name: entry.name,
+        ref: entry.type === 'measure'
+          ? refs.measure(entry.table, entry.name)
+          : refs.column(entry.table, entry.name),
+      })),
       isCalculated: !!table.isCalculated,
       isHidden: !!table.isHidden,
       physicalPath: resolved?.physicalPath ?? null,
@@ -182,7 +236,10 @@ function buildMeasures(model, graph) {
   return out;
 }
 
-function buildVisuals(report) {
+function buildVisuals(report, enrichments) {
+  const calcGroupNames = new Set(
+    (enrichments?.calculationGroups || []).map((cg) => cg.tableName));
+
   return (report?.visuals || []).map((visual) => ({
     ref: refs.visual(visual.pageId ?? visual.page, visual.id),
     id: visual.id,
@@ -199,6 +256,11 @@ function buildVisuals(report) {
     revealedBy: visual.revealedBy ?? [],
     neverShown: !!visual.neverShown,
     parentGroup: visual.parentGroupName ?? null,
+    // Calculation groups this visual binds. A visual that does changes what every measure
+    // on it evaluates to, and no amount of reading the measure's DAX reveals that — the
+    // rewrite lives in the group's calculation item, on a different table entirely.
+    appliesCalculationGroups: [...new Set(
+      (visual.fields || []).map((f) => f.table).filter((t) => calcGroupNames.has(t)))],
     fields: (visual.fields || []).map((f) => ({
       kind: f.type,
       table: f.table ?? null,
@@ -277,6 +339,37 @@ function linkMeasureUsage(measures, visuals) {
     for (const field of visual.fields) {
       if (field.kind !== 'measure' || !field.ref) continue;
       byRef.get(field.ref)?.usedByVisuals.push(visual.ref);
+    }
+  }
+}
+
+/**
+ * Record where a measure is shown under a calculation group.
+ *
+ * The question this answers is "is the number on the page the number my DAX computes?",
+ * and for a measure on a visual that binds a calculation group the answer is *no* — the
+ * group's calculation item wraps it, and nothing in the measure's own definition says so.
+ * Someone editing that measure and checking the visual would be reading a different
+ * expression than the one they changed.
+ *
+ * Only visuals that plot the measure count. A measure that merely filters such a visual
+ * is not the measure the group is rewriting.
+ */
+function linkCalculationGroups(measures, visuals) {
+  const byRef = new Map(measures.map((m) => [m.ref, m]));
+  for (const measure of measures) measure.underCalculationGroups = [];
+
+  for (const visual of visuals) {
+    if (visual.appliesCalculationGroups.length === 0) continue;
+    for (const field of visual.fields) {
+      if (field.kind !== 'measure' || !field.ref) continue;
+      const measure = byRef.get(field.ref);
+      if (!measure) continue;
+      for (const group of visual.appliesCalculationGroups) {
+        if (!measure.underCalculationGroups.includes(group)) {
+          measure.underCalculationGroups.push(group);
+        }
+      }
     }
   }
 }

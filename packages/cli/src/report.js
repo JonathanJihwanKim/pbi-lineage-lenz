@@ -55,3 +55,25 @@ export function duration(ms) {
 export const ok = (text) => `${style.green('✓')} ${text}`;
 export const warn = (text) => `${style.yellow('!')} ${text}`;
 export const fail = (text) => `${style.red('✗')} ${text}`;
+
+/**
+ * One dim line, after something has actually been produced.
+ *
+ * The rules it follows, in order of how much they matter:
+ *
+ * 1. **Only after success.** Asking for support next to a failed run is the kind of thing
+ *    that loses a user permanently.
+ * 2. **Never in CI.** A build log is read when something is wrong, by someone who cannot
+ *    act on it and did not choose to run the command. `CI` is set by every major runner.
+ * 3. **Never under `--quiet`.** That flag means "the path, nothing else", and a tool that
+ *    talks anyway cannot be trusted with the rest of its output either.
+ * 4. **One line, dim, last.** It sits below the result, never in place of it.
+ *
+ * @param {object} [options]
+ * @param {boolean} [options.quiet]
+ */
+export function sponsorLine({ quiet = false } = {}) {
+  if (quiet || process.env.CI) return;
+  out('', style.dim('  Free, and staying free. If this saved you an afternoon: '
+    + 'https://github.com/sponsors/JonathanJihwanKim'));
+}

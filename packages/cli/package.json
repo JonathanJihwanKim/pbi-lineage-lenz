@@ -1,6 +1,6 @@
 {
   "name": "pbi-lineage-lenz",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Find the lineage, understand the model, document both. Trace Power BI columns from physical source to report visual, generate documentation that cannot go stale, build a self-contained handoff file, and gate CI on broken references.",
   "type": "module",
   "bin": {
@@ -19,10 +19,10 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@pbi-lineage-lenz/core": "1.0.0",
-    "@pbi-lineage-lenz/export": "1.0.0",
-    "@pbi-lineage-lenz/handoff": "1.0.0",
-    "@pbi-lineage-lenz/viewer": "1.0.0"
+    "@pbi-lineage-lenz/core": "1.1.0",
+    "@pbi-lineage-lenz/export": "1.1.0",
+    "@pbi-lineage-lenz/handoff": "1.1.0",
+    "@pbi-lineage-lenz/viewer": "1.1.0"
   },
   "keywords": [
     "power-bi",

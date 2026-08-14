@@ -1,0 +1,89 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "Chart_MetricByMonth",
+  "position": {
+    "x": 640,
+    "y": 400,
+    "z": 6,
+    "height": 280,
+    "width": 620,
+    "tabOrder": 9
+  },
+  "visual": {
+    "visualType": "columnChart",
+    "title": "Selected metric by month",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "date"
+                    }
+                  },
+                  "Property": "Month"
+                }
+              },
+              "queryRef": "date.Month",
+              "nativeQueryRef": "Month"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "sales"
+                    }
+                  },
+                  "Property": "Sales Amount"
+                }
+              },
+              "queryRef": "sales.Sales Amount",
+              "nativeQueryRef": "Sales Amount"
+            }
+          ],
+          "fieldParameters": [
+            {
+              "parameterExpr": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Metric Selection"
+                    }
+                  },
+                  "Property": "Metric Selection"
+                }
+              }
+            }
+          ]
+        },
+        "Series": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Time Intelligence"
+                    }
+                  },
+                  "Property": "Time calculation"
+                }
+              },
+              "queryRef": "Time Intelligence.Time calculation",
+              "nativeQueryRef": "Time calculation"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

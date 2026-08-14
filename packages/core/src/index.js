@@ -83,7 +83,8 @@ export {
  * @param {object} options.modelStructure - Output of identifyProjectStructure() for the semantic model folder.
  * @param {object} [options.reportStructure] - Output of identifyProjectStructure() for the report folder.
  * @returns {{ graph: object, stats: object, enrichments: object, model: object, report: object,
- *   sourceNames: {tables: Map, columns: Map, stats: object}, dataSources: Array, bookmarks: Array }}
+ *   sourceNames: {tables: Map, columns: Map, stats: object}, dataSources: Array, bookmarks: Array,
+ *   fieldParameters: Map<string, Array<object>> }}
  */
 export function analyze({ modelStructure, reportStructure }) {
   // Step 1: Parse TMDL model
@@ -150,7 +151,13 @@ export function analyze({ modelStructure, reportStructure }) {
   // Step 7: Compute stats
   const stats = computeStats(graph);
 
-  return { graph, stats, enrichments, model, report, sourceNames, dataSources, bookmarks };
+  return {
+    graph, stats, enrichments, model, report, sourceNames, dataSources, bookmarks,
+    // The resolved form — every offered field checked against the model rather than taken
+    // from the parameter's text. Returned because the viewer needs the same answer the
+    // visual expansion above used, and recomputing it would be a second chance to differ.
+    fieldParameters,
+  };
 }
 
 /**

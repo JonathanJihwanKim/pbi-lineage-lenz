@@ -33,8 +33,8 @@ let model;
 beforeAll(async () => {
   const root = join(__dirname, '../../../samples/sample-pbip');
   const analysis = analyzeFromFiles({
-    modelFiles: readAll(join(root, 'definition')),
-    reportFiles: readAll(join(root, 'report/definition')),
+    modelFiles: readAll(join(root, 'Sample.SemanticModel/definition')),
+    reportFiles: readAll(join(root, 'Sample.Report/definition')),
   });
   model = toViewerModel(analysis, { modelName: 'Sample' });
   ({ html, bytes } = await buildHandoff(model));

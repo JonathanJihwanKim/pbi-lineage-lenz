@@ -15,7 +15,7 @@ import { toViewerModel } from '@pbi-lineage-lenz/viewer';
 import { toMarkdown, toJson } from '@pbi-lineage-lenz/export';
 import { buildHandoff } from '@pbi-lineage-lenz/handoff';
 import { loadProject } from '../readProject.js';
-import { out, heading, rows, ok, warn, style, bytesToMb } from '../report.js';
+import { out, heading, rows, ok, warn, style, bytesToMb, sponsorLine } from '../report.js';
 
 export const usage = `
 ${style.bold('pbi-lineage-lenz docs')} <path> [options]
@@ -88,6 +88,7 @@ export async function docsCommand({ positionals, options }) {
     ['model', `${model.tables.length} tables · ${model.measures.length} measures`],
   ]);
   out('', ok('Commit this next to your PBIP so the model is readable in a pull request.'));
+  sponsorLine(options);
 
   return 0;
 }

@@ -13,6 +13,7 @@ import { sourceMapLens } from './sourceMap.js';
 import { catalogLens } from './catalog.js';
 import { pageLens } from './pageLens.js';
 import { modelLens } from './modelLens.js';
+import { overviewLens } from './overviewLens.js';
 
 /**
  * Mount the viewer.
@@ -32,8 +33,11 @@ export function mountViewer(root, model, options = {}) {
   const names = new NameState(VOCAB.MODEL);
 
   const lenses = [
-    // Model first: it answers "what am I looking at?", which is the question that comes
-    // before "where did this column come from?" for anyone meeting the model cold.
+    // Overview first, and it is the only lens that is not a list. Someone opening a
+    // handoff file has been sent a model they have never seen; four tabs of sorted rows
+    // ask them to know what to look for before they have been told what this is.
+    { key: 'overview', label: 'overview', count: null },
+    // Then model: "what am I looking at?" comes before "where did this column come from?"
     { key: 'model', label: 'model', count: model.tables.length },
     { key: 'source-map', label: 'source map', count: model.columns.length },
     { key: 'measures', label: 'measures', count: model.measures.length },
@@ -50,7 +54,7 @@ export function mountViewer(root, model, options = {}) {
     'aria-selected': 'false',
     'data-key': lens.key,
     onClick: () => show(lens.key),
-  }, lens.label, h('span.count', String(lens.count))));
+  }, lens.label, lens.count === null ? null : h('span.count', String(lens.count))));
 
   const header = h('header.lenz-header',
     h('div.lenz-wordmark',
@@ -69,13 +73,20 @@ export function mountViewer(root, model, options = {}) {
   function viewFor(key) {
     if (views.has(key)) return views.get(key);
 
-    const view = key === 'measures'
-      ? catalogLens({ model, index, names, linkFor, onOpenVisual: (ref) => show('pages', ref) })
-      : key === 'pages'
-        ? pageLens({ model, index, linkFor, onOpenMeasure: (ref) => show('measures', ref) })
-        : key === 'model'
-          ? modelLens({ model, linkFor, onOpenColumn: (ref) => show('source-map', ref) })
-          : sourceMapLens({ model, names, linkFor, onSelect: (ref) => writeHash(ref) });
+    const view = key === 'overview'
+      ? overviewLens({ model, onOpen: (lens, ref) => show(lens, ref) })
+      : key === 'measures'
+        ? catalogLens({ model, index, names, linkFor, onOpenVisual: (ref) => show('pages', ref) })
+        : key === 'pages'
+          ? pageLens({ model, index, linkFor, onOpenMeasure: (ref) => show('measures', ref) })
+          : key === 'model'
+            ? modelLens({
+                model,
+                linkFor,
+                onOpenColumn: (ref) => show('source-map', ref),
+                onOpenMeasure: (ref) => show('measures', ref),
+              })
+            : sourceMapLens({ model, names, linkFor, onSelect: (ref) => writeHash(ref) });
 
     views.set(key, view);
     return view;
@@ -123,7 +134,7 @@ export function mountViewer(root, model, options = {}) {
     else if (kind === 'column') show('source-map', ref);
     else if (kind === 'visual' || kind === 'page') show('pages', ref);
     else if (kind === 'table') show('model', ref);
-    else show(active || 'model');
+    else show(active || 'overview');
   }
 
   /**
@@ -154,7 +165,7 @@ export function mountViewer(root, model, options = {}) {
   root.classList.add('lenz');
   replace(root, app);
 
-  show('model');
+  show('overview');
   if (routing && location.hash) readHash();
 
   return {

@@ -1,6 +1,6 @@
 {
   "name": "@pbi-lineage-lenz/handoff",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Build a single self-contained HTML file from a parsed Power BI model — opens in any browser with no Power BI, no PBIP folder, and no network access.",
   "type": "module",
   "main": "src/build.js",
@@ -14,7 +14,7 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@pbi-lineage-lenz/viewer": "1.0.0",
+    "@pbi-lineage-lenz/viewer": "1.1.0",
     "esbuild": "^0.24.0"
   },
   "license": "MIT",

@@ -31,8 +31,8 @@ let index;
 beforeAll(() => {
   const root = join(__dirname, '../../../samples/sample-pbip');
   const analysis = analyzeFromFiles({
-    modelFiles: readAll(join(root, 'definition')),
-    reportFiles: readAll(join(root, 'report/definition')),
+    modelFiles: readAll(join(root, 'Sample.SemanticModel/definition')),
+    reportFiles: readAll(join(root, 'Sample.Report/definition')),
   });
   model = toViewerModel(analysis, { modelName: 'Sample' });
   index = buildIndex(model);
@@ -222,5 +222,46 @@ describe('traceMeasure', () => {
 
   it('returns an empty chain for an unknown ref', () => {
     expect(traceMeasure('measure:Nope[Nope]', model, index).chain).toEqual([]);
+  });
+});
+
+describe('model machinery in the payload', () => {
+  // The core detected both of these from the first release and the payload dropped them,
+  // so the app and every handoff file rendered a calculation group as a two-column table
+  // with no measures, no source, and nothing saying what it does. The detection was never
+  // the bug; the boundary was.
+
+  it('names a calculation group and carries the DAX of its items', () => {
+    const group = model.tables.find((t) => t.name === 'TimeCalcGroup');
+    expect(group.kind).toBe('calculationGroup');
+    expect(group.calculationItems.map((i) => i.name)).toEqual(['YTD', 'QTD', 'MTD']);
+    expect(group.calculationItems[0].expression).toContain('SELECTEDMEASURE');
+  });
+
+  it('names a field parameter and resolves what it offers', () => {
+    const parameter = model.tables.find((t) => t.name === 'Sales Metrics');
+    expect(parameter.kind).toBe('fieldParameter');
+    // Resolved against the model rather than read off the parameter's own text: a field
+    // it offers that the model no longer has is a broken reference, not an offer.
+    expect(parameter.offers.map((o) => o.name).sort())
+      .toEqual(['Avg Sales', 'Total Quantity', 'Total Sales']);
+    expect(parameter.offers[0].ref).toMatch(/^measure:/);
+  });
+
+  it('leaves an ordinary table alone', () => {
+    expect(model.tables.find((t) => t.name === 'Sales').kind).toBe('table');
+    expect(model.tables.find((t) => t.name === 'Sales').calculationItems).toEqual([]);
+  });
+
+  it('survives an analysis that carries no enrichments at all', () => {
+    // `toViewerModel` is called directly by third-party code and by older callers that
+    // pass an analysis assembled by hand. A missing key must produce ordinary tables,
+    // never a crash on the property access.
+    const bare = toViewerModel({
+      model: { tables: [{ name: 'T', columns: [{ name: 'C' }] }] },
+      report: { visuals: [], pages: [] },
+    }, {});
+    expect(bare.tables[0].kind).toBe('table');
+    expect(bare.tables[0].offers).toEqual([]);
   });
 });

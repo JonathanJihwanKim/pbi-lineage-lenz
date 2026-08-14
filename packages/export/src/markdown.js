@@ -79,10 +79,20 @@ export function toMarkdown(model, { dax = true } = {}) {
   ), '');
 
   if (stats) {
+    const asides = [];
+    if (stats.computed) {
+      asides.push(`**${stats.computed}** more ${stats.computed === 1 ? 'is' : 'are'} computed `
+        + 'in DAX or Power Query and have no source column');
+    }
+    if (stats.modelDefined) {
+      asides.push(`**${stats.modelDefined}** belong to field parameters and calculation groups, `
+        + 'which are model metadata rather than data');
+    }
+
     sections.push(
       `**${stats.sourced ?? 0} of ${(stats.sourced ?? 0) + (stats.unresolved ?? 0)} columns** that read `
       + `from a source are traced to a physical column (${Math.round((stats.coverage ?? 0) * 100)}%)`
-      + `${stats.computed ? `, and **${stats.computed}** more are computed and have no source at all` : ''}.`,
+      + `${asides.length > 0 ? `; ${asides.join('; ')}` : ''}.`,
       '',
       `Confidence in those answers: ${stats.exact ?? 0} stated, ${stats.inferred ?? 0} assumed, `
       + `${stats.unknown ?? 0} unresolved.`,
@@ -90,7 +100,8 @@ export function toMarkdown(model, { dax = true } = {}) {
       '> The two counts measure different things. `exact` / `inferred` / `unknown` is confidence in '
       + 'the answer — "this column is computed in DAX and has no physical source" is an exact answer, '
       + 'so a calculated column is `exact`. Coverage is about origin, and counts only the columns '
-      + 'that read from somewhere.',
+      + 'that read from somewhere: a field parameter cannot have a physical source, so counting it '
+      + 'as untraced would make the percentage mean less rather than more.',
       '',
       '> `exact` means the source name is stated by the model — written down as a rename, or fixed '
       + 'by a chain in which every step is accounted for and none of them can rename a column. '
@@ -185,8 +196,28 @@ export function toMarkdown(model, { dax = true } = {}) {
           : `Shown in ${shown} visual${shown === 1 ? '' : 's'}.`,
         '',
       );
+
+      // The DAX above is not what those visuals evaluate where a calculation group is
+      // bound, and a reader comparing the two would otherwise never find that out.
+      if (measure.underCalculationGroups?.length > 0) {
+        sections.push(
+          `> Rewritten by ${measure.underCalculationGroups.map((g) => `**${g}**`).join(' and ')} `
+          + 'on at least one visual that shows it: what those visuals display is this '
+          + 'expression wrapped in the selected calculation item.',
+          '',
+        );
+      }
     }
   }
+
+  // ── Calculation groups ──
+  // Their items are not measures, so nothing above lists them, and the table section shows
+  // a two-column table with no measures and no source — which is the least informative
+  // possible rendering of the object that rewrites every measure in a visual.
+  sections.push(...calculationGroups(model));
+
+  // ── Field parameters ──
+  sections.push(...fieldParameters(model));
 
   // ── Model shape ──
   // A relationship list is not a data model. 87 rows of `fact.date_fk -> Time Period`
@@ -242,6 +273,112 @@ export function toMarkdown(model, { dax = true } = {}) {
   }
 
   return `${sections.join('\n').replace(/\n{3,}/g, '\n\n').trim()}\n`;
+}
+
+/**
+ * Every calculation group, its items, and the DAX each one applies.
+ *
+ * This is the section a generated document most needs and a hand-written one most often
+ * lacks, because a calculation group is invisible from every direction: it is not a
+ * measure, so a measure listing skips it; its table has no source, so a source map has
+ * nothing to say about it; and its effect appears on visuals that never name it. A reader
+ * asked "why does this card show year-to-date when the measure has no time intelligence
+ * in it?" cannot answer from anything else in this file.
+ */
+function calculationGroups(model) {
+  const groups = (model.tables || []).filter((t) => t.kind === 'calculationGroup');
+  if (groups.length === 0) return [];
+
+  const sections = ['## Calculation groups', ''];
+  sections.push(
+    'Selecting an item from one of these rewrites every measure in the visual it is '
+    + 'applied to. The measure\'s own DAX does not change and does not mention it.',
+    '',
+  );
+
+  for (const group of groups) {
+    sections.push(`### ${group.name}`, '');
+
+    const applied = (model.visuals || [])
+      .filter((visual) => visual.appliesCalculationGroups?.includes(group.name));
+    sections.push(
+      applied.length === 0
+        ? '_No visual in this report binds it._'
+        : `Applied by **${applied.length}** visual${applied.length === 1 ? '' : 's'}: `
+          + applied.map((v) => `${v.title || v.type || v.id} (${pageName(model, v.page)})`)
+            .join(', ') + '.',
+      '',
+    );
+
+    if (group.calculationItems.length === 0) {
+      sections.push('_No calculation items found._', '');
+      continue;
+    }
+
+    for (const item of group.calculationItems) {
+      sections.push(`#### ${item.name}`, '');
+      if (item.expression) sections.push('```dax', item.expression.trim(), '```', '');
+    }
+  }
+
+  return sections;
+}
+
+/**
+ * Every field parameter and the fields it offers.
+ *
+ * A visual bound to one names the parameter and stops, so the report says "this table
+ * shows prmMeasures" where the truth is "a slicer here reaches any of 22 measures". Listed
+ * in full because the difference between what a visual shows now and what it can be made
+ * to show is the difference between a safe change and a broken page.
+ */
+function fieldParameters(model) {
+  const parameters = (model.tables || []).filter((t) => t.kind === 'fieldParameter');
+  if (parameters.length === 0) return [];
+
+  const sections = ['## Field parameters', ''];
+  sections.push(
+    'Each of these is a list of fields a slicer can put on a visual. A visual bound to one '
+    + 'can display any field below, not only the one selected when the report was saved.',
+    '',
+  );
+
+  sections.push(table(
+    ['Field parameter', 'Offers', 'Bound by'],
+    parameters.map((parameter) => [
+      `[${parameter.name}](#${anchor(parameter.name)})`,
+      `${parameter.offers.length} field${parameter.offers.length === 1 ? '' : 's'}`,
+      (() => {
+        const bound = boundVisuals(model, parameter.name).length;
+        return `${bound} visual${bound === 1 ? '' : 's'}`;
+      })(),
+    ]),
+  ), '');
+
+  for (const parameter of parameters) {
+    sections.push(`### ${parameter.name}`, '');
+    if (parameter.offers.length === 0) {
+      sections.push('_Offers no field this model contains._', '');
+      continue;
+    }
+    sections.push(table(
+      ['Field', 'Table', 'Kind'],
+      parameter.offers.map((offer) => [offer.name, offer.table, offer.kind]),
+    ), '');
+  }
+
+  return sections;
+}
+
+/** Visuals reaching a field through the named parameter. */
+function boundVisuals(model, parameterName) {
+  return (model.visuals || []).filter((visual) =>
+    (visual.fields || []).some((f) => f.table === parameterName || f.viaParameter === parameterName));
+}
+
+/** A page's display name, for locating a visual in prose. */
+function pageName(model, pageId) {
+  return (model.pages || []).find((page) => page.id === pageId)?.name ?? pageId ?? 'unknown page';
 }
 
 /**

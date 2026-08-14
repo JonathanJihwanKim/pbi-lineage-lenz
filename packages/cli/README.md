@@ -18,11 +18,30 @@ npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
 
 | Question | Command |
 |---|---|
+| Can I hand someone documentation? | `docs --format md` — markdown with a mermaid ER diagram, committed beside the PBIP |
 | Where does this column actually come from? | `handoff` — the source map, every model column beside its physical one |
 | What does this model look like? | `handoff` — table roles read from the direction of relationships |
+| Why is this number not what the measure computes? | `handoff` — the calculation group rewriting it, and which visuals apply it |
+| What can this visual be made to show? | `handoff` — every field the bound field parameter offers |
 | Did this change break anything? | `check` — exits non-zero on a broken reference |
-| Can I hand someone documentation? | `docs --format md` — markdown with a mermaid ER diagram |
 | What changed about the model in this PR? | `diff main..HEAD` |
+
+## Calculation groups and field parameters
+
+Both are references to references, and finding the reference is not the same as following
+it.
+
+A **field parameter** is bound to a visual as a single name. The report says *"this well
+holds prmMeasures"*; the 22 measures behind it live in DAX. Not following it understated one
+real pivot table by fifteen measures.
+
+A **calculation group** wraps `SELECTEDMEASURE()` around whatever a visual shows, so the
+number on the page is not the number the measure computes — and nothing in the measure says
+so. It is not a measure, its table has no physical source, and its effect appears on visuals
+that never name it, which makes it invisible from every other direction.
+
+Both are followed, both are labelled wherever they appear, and `docs` gives each its own
+section with the DAX that does the work.
 
 ## Commands
 
@@ -46,6 +65,11 @@ Every resolved column states how far to trust it: `exact` when the model says so
 `unknown` is a feature. `SELECT *` in native SQL, a column missing from an explicit
 projection, and a table with no Power Query expression all resolve to `unknown` rather than
 to a plausible guess — because one wrong mapping costs more trust than ten missing ones.
+
+Coverage counts only the columns that *could* have a source. A DAX calculated column has
+none by definition, and neither does a field parameter or a calculation group — counting
+those as untraced held one real model's genuine 96% down to a reported 82%, and sent readers
+looking for 67 things that were never lost.
 
 ## In CI
 

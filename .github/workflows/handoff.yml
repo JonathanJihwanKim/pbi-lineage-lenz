@@ -38,20 +38,25 @@ jobs:
         with:
           node-version: 22
 
+      # The version specifier is not decoration. Without it, npx resolves against
+      # whatever the checked-out repository declares, and in a repository that happens
+      # to contain a package of the same name it never reaches the registry at all —
+      # which is exactly how this workflow failed the first time it ran.
+      #
       # The gate. Exits 1 on a broken reference — a measure reading a column that no
       # longer exists — and reports everything else without failing.
       - name: Check the model
-        run: npx --yes pbi-lineage-lenz check "$PROJECT_PATH"
+        run: npx --yes pbi-lineage-lenz@latest check "$PROJECT_PATH"
 
       - name: Build the handoff file
-        run: npx --yes pbi-lineage-lenz handoff "$PROJECT_PATH" -o handoff.html
+        run: npx --yes pbi-lineage-lenz@latest handoff "$PROJECT_PATH" -o handoff.html
 
       - name: Describe what changed
         id: diff
         run: |
           {
             echo 'summary<<HANDOFF_EOF'
-            npx --yes pbi-lineage-lenz diff \
+            npx --yes pbi-lineage-lenz@latest diff \
               "origin/${{ github.base_ref }}..${{ github.sha }}" "$PROJECT_PATH" \
               || echo '_Could not compare against the base branch._'
             echo 'HANDOFF_EOF'

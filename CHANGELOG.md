@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.1 — `pbi-lineage-lenz` only
+
+No behaviour change. The npm package page described a tool with no calculation groups, no
+field parameters and no honest coverage count — the three things 1.1.0 is about — because
+npm serves the README from the published tarball rather than from the repository, so the
+1.1.0 publish carried the old text.
+
+Same failure as 1.0.1, and worth naming twice: the package page is where somebody decides
+whether to try this at all, and it keeps being the last place the new work reaches.
+
 ## 1.1.0 — calculation groups, honest coverage, and an overview
 
 ### Calculation groups reach the reader

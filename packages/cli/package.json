@@ -1,6 +1,6 @@
 {
   "name": "pbi-lineage-lenz",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Find the lineage, understand the model, document both. Trace Power BI columns from physical source to report visual, generate documentation that cannot go stale, build a self-contained handoff file, and gate CI on broken references.",
   "type": "module",
   "bin": {

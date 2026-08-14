@@ -1,5 +1,72 @@
 # Changelog
 
+## 1.1.0 — calculation groups, honest coverage, and an overview
+
+### Calculation groups reach the reader
+
+The core detected them from the first release and the viewer payload dropped them, so a
+calculation group rendered as a two-column table with no measures, no source, and nothing
+saying what it does. It is the hardest object in a model to discover by reading — not a
+measure, no physical source, and its effect appears on visuals that never name it — so
+being silent about it was the worst possible outcome.
+
+- `toViewerModel` carries a table's `kind`, a calculation group's items with their DAX, and
+  the fields a field parameter offers. Payload version bumped to 2.
+- The model lens marks both, filters on both, and shows a calculation group's items with
+  their DAX — the only place that DAX appears at all.
+- The measures lens says when a measure is rewritten: *"1 of the 12 visuals showing this
+  measure also binds 'Time Intelligence', so what they display is this expression wrapped
+  in the selected calculation item — not this expression."*
+- The pages lens marks visuals that apply one, and labels fields a field parameter offers
+  as offered rather than shown.
+- `docs` gains `## Calculation groups` and `## Field parameters` sections.
+
+### Coverage stops counting metadata as failures
+
+Field parameter and calculation group columns have no physical source and never could. They
+resolved to `unknown` with the reason *"No physical table could be resolved from the Power
+Query expression"* — false, because there is no Power Query expression to resolve.
+
+On a real 61-table model that was **67 columns, 81% of everything reported as untraced.** It
+held a genuine 96% coverage down to a reported 82% and sent readers looking for 67 things
+that were never lost. They are now `model-defined`, counted apart from both `sourced` and
+`computed`, and reported separately everywhere.
+
+### Overview lens, shown first
+
+A fifth lens that is not a list: what the model is, how much of it is traced, and what is
+worth looking at, in sentences. Every number on it is arithmetic over the payload — no
+scores and no grades, because a summary screen is the easiest place in the product to start
+quietly guessing.
+
+### Contrast and colour
+
+- Every colour now carries at least **4.5:1** against every ground in both themes, checked
+  at the value. `--ink-4` was **2.09:1** and rendered every "no source" placeholder, which
+  made the tool's *unknown* state the least readable thing on screen.
+- `exact` and `inferred` differed by hue alone — green and amber, the pair that converges
+  under deuteranopia. They are now solid, half-filled and hollow markers, so the tool's
+  central signal survives greyscale and colour-blindness.
+- A distinct tint for model machinery, chosen to read as neither a warning nor a vocabulary.
+
+### Documentation
+
+The README keeps the pitch and the quick start; the depth moves into `docs/`:
+[documentation](docs/documentation.md), [lenses](docs/lenses.md),
+[confidence](docs/confidence.md),
+[calculation groups and field parameters](docs/calculation-groups-and-field-parameters.md),
+and [CI](docs/ci.md).
+
+### Samples
+
+`samples/contoso` — the demo, every screenshot, and the bundled-sample test — now carries a
+four-item calculation group and a five-measure field parameter bound to real visuals, so
+the behaviour the README describes is demonstrated and a regression fails the build.
+`samples/sample-pbip` is restructured into a real PBIP layout; its report was previously
+unreachable through the CLI.
+
+`npm test` is 577 tests.
+
 ## 1.0.1 — `pbi-lineage-lenz` only
 
 No behaviour change. The package page led with lineage and the handoff file, and mentioned

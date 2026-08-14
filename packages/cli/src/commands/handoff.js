@@ -13,7 +13,7 @@ import { analyzeFromFiles } from '@pbi-lineage-lenz/core';
 import { toViewerModel } from '@pbi-lineage-lenz/viewer';
 import { buildHandoff, handoffFileName } from '@pbi-lineage-lenz/handoff';
 import { loadProject } from '../readProject.js';
-import { out, heading, rows, ok, warn, style, bytesToMb, duration } from '../report.js';
+import { out, heading, rows, ok, warn, style, bytesToMb, duration, sponsorLine } from '../report.js';
 
 export const usage = `
 ${style.bold('pbi-lineage-lenz handoff')} <path> [options]
@@ -68,6 +68,7 @@ export async function handoffCommand({ positionals, options }) {
   out('');
   for (const message of built.warnings) out(warn(message));
   out(ok('Send this file to anyone. It fetches nothing.'));
+  sponsorLine(options);
 
   return 0;
 }

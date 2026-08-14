@@ -124,4 +124,89 @@ describe('toMarkdown', () => {
     expect(markdown).toContain('Power Query steps');
     expect(markdown).toContain('Navigation');
   });
+
+  it('documents a calculation group, which nothing else in the file can describe', () => {
+    // A calculation group is invisible from every other direction: its items are not
+    // measures, its table has no source, and its effect shows on visuals that never name
+    // it. Without this section the generated documentation says a two-column table with
+    // no measures exists, and nothing about what it does.
+    const markdown = toMarkdown(model({
+      tables: [{
+        name: 'Time Intelligence',
+        kind: 'calculationGroup',
+        physicalPath: null,
+        columnCount: 2,
+        measureCount: 0,
+        steps: [],
+        calculationItems: [
+          { name: 'YTD', expression: 'CALCULATE ( SELECTEDMEASURE (), DATESYTD ( date[Date] ) )' },
+        ],
+        offers: [],
+      }],
+      visuals: [{
+        id: 'v1', title: 'Sales by month', page: 'p1',
+        appliesCalculationGroups: ['Time Intelligence'], fields: [],
+      }],
+      pages: [{ id: 'p1', name: 'Overview', visualCount: 1 }],
+    }));
+
+    expect(markdown).toContain('## Calculation groups');
+    expect(markdown).toContain('### Time Intelligence');
+    expect(markdown).toContain('#### YTD');
+    expect(markdown).toContain('SELECTEDMEASURE');
+    // Which visuals it reaches, located on their page — the half a reader acts on.
+    expect(markdown).toMatch(/Applied by \*\*1\*\* visual: Sales by month \(Overview\)/);
+  });
+
+  it('lists what a field parameter offers, not just that one exists', () => {
+    const markdown = toMarkdown(model({
+      tables: [{
+        name: 'Metric Selection',
+        kind: 'fieldParameter',
+        physicalPath: null,
+        columnCount: 3,
+        measureCount: 0,
+        steps: [],
+        calculationItems: [],
+        offers: [
+          { kind: 'measure', table: 'Sales', name: 'Total Sales', ref: 'measure:Sales[Total Sales]' },
+          { kind: 'measure', table: 'Sales', name: 'Gross Margin', ref: 'measure:Sales[Gross Margin]' },
+        ],
+      }],
+      visuals: [{ id: 'v1', fields: [{ table: 'Metric Selection' }] }],
+    }));
+
+    expect(markdown).toContain('## Field parameters');
+    expect(markdown).toContain('### Metric Selection');
+    expect(markdown).toContain('Total Sales');
+    expect(markdown).toContain('Gross Margin');
+    // Singular, because "1 visuals" in a generated document reads as a bug in the tool.
+    expect(markdown).toContain('| 2 fields | 1 visual |');
+  });
+
+  it('says nothing about machinery a model does not have', () => {
+    // Both sections are absent rather than empty. A "## Calculation groups — none" heading
+    // in every generated file is noise in a diff on every commit.
+    const markdown = toMarkdown(model());
+    expect(markdown).not.toContain('## Calculation groups');
+    expect(markdown).not.toContain('## Field parameters');
+  });
+
+  it('warns on a measure a calculation group rewrites', () => {
+    const markdown = toMarkdown(model({
+      measures: [{
+        table: 'Sales', name: 'Total Sales', expression: 'SUM(Sales[Amount])',
+        usedByVisuals: ['visual:p1/v1'], underCalculationGroups: ['Time Intelligence'],
+      }],
+    }));
+    expect(markdown).toMatch(/Rewritten by \*\*Time Intelligence\*\*/);
+  });
+
+  it('separates model-defined columns from columns it failed to trace', () => {
+    const markdown = toMarkdown(model({
+      stats: { confidence: { coverage: 0.96, exact: 20, inferred: 0, unknown: 3, sourced: 24, unresolved: 1, computed: 2, modelDefined: 5 } },
+    }));
+    expect(markdown).toContain('**5** belong to field parameters and calculation groups');
+    expect(markdown).toContain('**24 of 25 columns**');
+  });
 });

@@ -57,10 +57,49 @@ describe('the bundled Contoso sample', () => {
   });
 
   it('parses the whole project', () => {
-    expect(analysis.stats.tables).toBe(7);
+    expect(analysis.stats.tables).toBe(9);
     expect(analysis.stats.measures).toBe(7);
-    expect(analysis.stats.visuals).toBe(12);
+    expect(analysis.stats.visuals).toBe(14);
     expect(analysis.report.pages).toHaveLength(2);
+  });
+
+  it('carries a calculation group and a field parameter, both bound to a visual', () => {
+    // The README says hidden visuals are "exactly where field parameters and calculation
+    // groups live", and for a long time the sample behind every screenshot contained
+    // neither — so the claim was never demonstrated and nothing here could break if the
+    // handling regressed. Both are now in the sample and bound to a real visual.
+    const model = toViewerModel(analysis, { modelName: 'contoso' });
+
+    const group = model.tables.find((t) => t.kind === 'calculationGroup');
+    expect(group.name).toBe('Time Intelligence');
+    expect(group.calculationItems.map((i) => i.name))
+      .toEqual(['Current', 'YTD', 'Prior year', 'YoY %']);
+    expect(group.calculationItems[1].expression).toMatch(/SELECTEDMEASURE/);
+
+    const parameter = model.tables.find((t) => t.kind === 'fieldParameter');
+    expect(parameter.name).toBe('Metric Selection');
+    expect(parameter.offers).toHaveLength(5);
+    expect(parameter.offers.every((o) => o.kind === 'measure')).toBe(true);
+
+    // The half that matters: both reach a visual, so the whole path is exercised rather
+    // than only the detection.
+    const chart = model.visuals.find((v) => v.id === 'Chart_MetricByMonth');
+    expect(chart.appliesCalculationGroups).toEqual(['Time Intelligence']);
+    expect(chart.fields.filter((f) => f.via === 'parameter').length).toBeGreaterThan(0);
+
+    // And a measure it shows knows it is being rewritten.
+    const measure = model.measures.find((m) => m.name === 'Sales Amount');
+    expect(measure.underCalculationGroups).toEqual(['Time Intelligence']);
+  });
+
+  it('does not count the machinery as columns it failed to trace', () => {
+    // The five columns of the field parameter and the calculation group have no physical
+    // source and never could. Counting them as unresolved would drop this sample's
+    // coverage from 95% to 89% and send a reader looking for five missing things.
+    const { stats } = analysis.sourceNames;
+    expect(stats.modelDefined).toBe(5);
+    expect(stats.unresolved).toBe(4);
+    expect(stats.coverage).toBeGreaterThan(0.95);
   });
 
   it('resolves a Fabric Lakehouse SQL endpoint to a three-part path', () => {
@@ -91,12 +130,14 @@ describe('the bundled Contoso sample', () => {
     // 78% before Direct Lake was understood, 95% after.
     expect(stats.coverage).toBeGreaterThan(0.9);
     expect(stats.inferred).toBe(0);
-    expect(stats.sourced).toBe(stats.exact - stats.computed);
+    expect(stats.sourced).toBe(stats.exact - stats.computed - stats.modelDefined);
   });
 
   it('reads a star out of the join directions', () => {
     const shape = describeModelShape(toViewerModel(analysis, { modelName: 'contoso' }));
-    expect(shape.counts).toEqual({ fact: 2, dimension: 4, bridge: 0, standalone: 1 });
+    // The field parameter and the calculation group join nothing, which is what makes
+    // `standalone` a bucket a newcomer cannot read — hence the separate kind.
+    expect(shape.counts).toEqual({ fact: 2, dimension: 4, bridge: 0, standalone: 3 });
     expect(shape.dangling).toEqual([]);
     expect(shape.tables.get('sales').role).toBe(TABLE_ROLE.FACT);
   });

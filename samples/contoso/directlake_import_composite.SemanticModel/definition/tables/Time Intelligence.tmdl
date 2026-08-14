@@ -1,0 +1,37 @@
+/// Time intelligence applied to whichever measure a visual shows.
+table 'Time Intelligence'
+	lineageTag: 7c1e4a90-2f3d-4b18-9a5c-0d61f2e84a11
+
+	calculationGroup
+		precedence: 10
+
+		calculationItem Current = SELECTEDMEASURE()
+
+		calculationItem YTD = CALCULATE ( SELECTEDMEASURE (), DATESYTD ( 'date'[Date] ) )
+
+		calculationItem 'Prior year' = CALCULATE ( SELECTEDMEASURE (), SAMEPERIODLASTYEAR ( 'date'[Date] ) )
+
+		calculationItem 'YoY %' =
+				VAR __current = SELECTEDMEASURE ()
+				VAR __prior = CALCULATE ( SELECTEDMEASURE (), SAMEPERIODLASTYEAR ( 'date'[Date] ) )
+				RETURN
+					DIVIDE ( __current - __prior, __prior )
+
+	column 'Time calculation'
+		dataType: string
+		lineageTag: 7c1e4a90-2f3d-4b18-9a5c-0d61f2e84a12
+		summarizeBy: none
+		sourceColumn: Name
+		sortByColumn: Ordinal
+
+		annotation SummarizationSetBy = Automatic
+
+	column Ordinal
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 7c1e4a90-2f3d-4b18-9a5c-0d61f2e84a13
+		summarizeBy: sum
+		sourceColumn: Ordinal
+
+		annotation SummarizationSetBy = Automatic

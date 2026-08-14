@@ -1,0 +1,54 @@
+/// Field parameter: the measures a slicer can put on a visual bound to it.
+table 'Metric Selection'
+	lineageTag: 9f2b6c14-8e35-4d72-b0a9-3c47d5e10b88
+
+	column 'Metric Selection'
+		lineageTag: 9f2b6c14-8e35-4d72-b0a9-3c47d5e10b89
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Value1]
+		sortByColumn: 'Metric Selection Order'
+
+		relatedColumnDetails
+			groupByColumn: 'Metric Selection Fields'
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Metric Selection Fields'
+		isHidden
+		lineageTag: 9f2b6c14-8e35-4d72-b0a9-3c47d5e10b8a
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Value2]
+		sortByColumn: 'Metric Selection Order'
+
+		extendedProperty ParameterMetadata =
+				{
+				  "kind": 2,
+				  "version": 3
+				}
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Metric Selection Order'
+		isHidden
+		formatString: 0
+		lineageTag: 9f2b6c14-8e35-4d72-b0a9-3c47d5e10b8b
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Value3]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Metric Selection' = calculated
+		mode: import
+		source =
+				{
+					("Sales Amount", NAMEOF('sales'[Sales Amount]), 0),
+					("Gross Margin", NAMEOF('sales'[Gross Margin]), 1),
+					("Gross Margin %", NAMEOF('sales'[Gross Margin %]), 2),
+					("Total Quantity", NAMEOF('sales'[Total Quantity]), 3),
+					("Order Count", NAMEOF('sales'[Order Count]), 4)
+				}
+
+	annotation PBI_Id = 9f2b6c148e354d72b0a93c47d5e10b88

@@ -16,6 +16,31 @@
 import { h, svg, replace, debounce, copyText } from './dom.js';
 import { describeModelShape, neighbourhood, describeRole, TABLE_ROLE, ROLE_ORDER } from './modelShape.js';
 import { physicalPath } from './names.js';
+import { TABLE_KIND } from './viewerModel.js';
+import { highlightDax } from './catalog.js';
+
+/** What a field parameter or a calculation group is, in one line. */
+export function describeKind(kind) {
+  return {
+    [TABLE_KIND.FIELD_PARAMETER]:
+      'A field parameter: its rows are fields, and a slicer over it changes what a visual shows',
+    [TABLE_KIND.CALCULATION_GROUP]:
+      'A calculation group: selecting an item rewrites every measure in the visual',
+  }[kind] ?? '';
+}
+
+/** Tabs for the machinery, shown only when the model actually has some. */
+const KIND_TABS = [
+  { key: TABLE_KIND.FIELD_PARAMETER, label: 'field parameters' },
+  { key: TABLE_KIND.CALCULATION_GROUP, label: 'calculation groups' },
+];
+
+/** The chip shown wherever such a table appears. Null for an ordinary table. */
+export function kindChip(kind) {
+  if (!kind || kind === TABLE_KIND.TABLE) return null;
+  const label = kind === TABLE_KIND.CALCULATION_GROUP ? 'calculation group' : 'field parameter';
+  return h(`span.kind.kind-${kind}`, { title: describeKind(kind) }, label);
+}
 
 /**
  * Build the model lens.
@@ -24,9 +49,10 @@ import { physicalPath } from './names.js';
  * @param {object} options.model - Viewer model.
  * @param {(ref: string) => string} [options.linkFor]
  * @param {(ref: string) => void} [options.onOpenColumn] - Jump to a column in the source map.
+ * @param {(ref: string) => void} [options.onOpenMeasure] - Jump to a measure in the catalog.
  * @returns {{el: HTMLElement, select: (ref: string) => void, destroy: () => void}}
  */
-export function modelLens({ model, linkFor, onOpenColumn }) {
+export function modelLens({ model, linkFor, onOpenColumn, onOpenMeasure }) {
   const shape = describeModelShape(model);
   const byName = new Map((model.tables || []).map((t) => [t.name, t]));
 
@@ -75,25 +101,45 @@ export function modelLens({ model, linkFor, onOpenColumn }) {
       return byRole !== 0 ? byRole : b.degree - a.degree || a.name.localeCompare(b.name);
     });
 
+    // The machinery tabs cut across roles rather than sitting inside them: a field
+    // parameter is `standalone` in a model that never joins it and a `dimension` in one
+    // that does, and "which of these is a field parameter" is a question asked about all
+    // of them at once. So a tab selects on one axis or the other, never both.
+    const isKindTab = KIND_TABS.some((tab) => tab.key === state.role);
+
     return all.filter((entry) => {
-      if (state.role !== 'all' && entry.role !== state.role) return false;
-      if (!state.query) return true;
       const table = byName.get(entry.name);
+      if (state.role !== 'all') {
+        const selected = isKindTab ? table?.kind === state.role : entry.role === state.role;
+        if (!selected) return false;
+      }
+      if (!state.query) return true;
       return entry.name.toLowerCase().includes(state.query)
         || (table?.physicalPath || '').toLowerCase().includes(state.query);
     });
   }
 
+  function kindCount(kind) {
+    return (model.tables || []).filter((t) => t.kind === kind).length;
+  }
+
   function renderRoleTabs() {
     const options = [
-      { key: 'all', label: 'all', count: shape.tables.size },
-      ...ROLE_ORDER.map((role) => ({ key: role, label: role, count: shape.counts[role] })),
+      { key: 'all', label: 'all', count: shape.tables.size, title: 'Every table' },
+      ...ROLE_ORDER.map((role) => ({
+        key: role, label: role, count: shape.counts[role], title: describeRole(role),
+      })),
+      // Only offered when the model has them. A tab reading "0 calculation groups" tells
+      // a reader nothing they wanted to know.
+      ...KIND_TABS
+        .map((tab) => ({ ...tab, count: kindCount(tab.key), title: describeKind(tab.key) }))
+        .filter((tab) => tab.count > 0),
     ];
     replace(roleTabs, options.map((option) => h('button.page-tab', {
       type: 'button',
       role: 'tab',
       'aria-selected': String(option.key === state.role),
-      title: option.key === 'all' ? 'Every table' : describeRole(option.key),
+      title: option.title,
       onClick: () => {
         state.role = option.key;
         render();
@@ -114,7 +160,11 @@ export function modelLens({ model, linkFor, onOpenColumn }) {
       },
         h('td',
           h('span.n-model', entry.name),
-          h('span.step', { style: { marginLeft: '7px' }, title: describeRole(entry.role) }, entry.role)),
+          // The chip replaces the role for machinery: "standalone" is true of a field
+          // parameter and tells a reader nothing, while "field parameter" is the answer.
+          table?.kind && table.kind !== 'table'
+            ? h('span', { style: { marginLeft: '7px' } }, kindChip(table.kind))
+            : h('span.step', { style: { marginLeft: '7px' }, title: describeRole(entry.role) }, entry.role)),
         h('td', table?.physicalPath
           ? h('span.n-source', physicalPath(table.physicalPath))
           : h('span', { style: { color: 'var(--ink-4)' } }, '—')),
@@ -176,13 +226,17 @@ export function modelLens({ model, linkFor, onOpenColumn }) {
     replace(detailBody,
       h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' } },
         h('span.n-model', near.name),
-        h('span.step', { title: describeRole(near.role) }, near.role),
+        kindChip(table?.kind) ?? h('span.step', { title: describeRole(near.role) }, near.role),
         h('span', { style: { flex: '1' } }),
         copy),
       table?.physicalPath
         ? h('div.n-source', { style: { marginBottom: '10px' } }, physicalPath(table.physicalPath))
         : null,
-      h('div', { style: { color: 'var(--ink-3)', marginBottom: '12px' } }, describeRole(near.role)),
+      h('div', { style: { color: 'var(--ink-2)', marginBottom: '12px' } },
+        describeKind(table?.kind) || describeRole(near.role)),
+
+      // What the machinery actually contains. Both were in the payload as nothing at all.
+      ...machineryDetail(table, { onOpenMeasure, onOpenColumn }),
 
       near.edges.length > 0
         ? h('table.tbl',
@@ -210,6 +264,51 @@ export function modelLens({ model, linkFor, onOpenColumn }) {
         : null);
   }
 
+  /**
+   * The contents of a field parameter or a calculation group.
+   *
+   * For a calculation group this is the only place its DAX exists: the items are not
+   * measures, so the measures lens never showed them, and the table listing showed a
+   * two-column table with nothing in it. `SELECTEDMEASURE()` is the thing a reader has to
+   * see to understand why a number on the page is not the number the measure computes.
+   *
+   * For a field parameter it is the list of fields a slicer can reach — which is what the
+   * table *is*, rather than the three opaque columns Power BI generates to store it.
+   */
+  function machineryDetail(table, { onOpenMeasure: openMeasure, onOpenColumn: openColumn }) {
+    if (!table) return [];
+    const out = [];
+
+    if (table.calculationItems?.length > 0) {
+      out.push(h('div.label', { style: { marginBottom: '6px' } },
+        `${table.calculationItems.length} calculation item${table.calculationItems.length === 1 ? '' : 's'}`));
+      for (const item of table.calculationItems) {
+        out.push(h('div', { style: { marginBottom: '10px' } },
+          h('div.n-model', { style: { marginBottom: '4px' } }, item.name),
+          item.expression
+            ? h('pre.code', { html: highlightDax(item.expression) })
+            : h('div', { style: { color: 'var(--ink-3)' } }, 'No expression')));
+      }
+    }
+
+    if (table.offers?.length > 0) {
+      out.push(h('div.label', { style: { marginBottom: '6px' } },
+        `offers ${table.offers.length} field${table.offers.length === 1 ? '' : 's'}`));
+      out.push(h('div', { style: { marginBottom: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' } },
+        ...table.offers.map((offer) => h('a.chip', {
+          href: '#',
+          title: `${offer.table}[${offer.name}] — a ${offer.kind}`,
+          onClick: (event) => {
+            event.preventDefault();
+            if (offer.kind === 'measure') openMeasure?.(offer.ref);
+            else openColumn?.(offer.ref);
+          },
+        }, offer.name))));
+    }
+
+    return out;
+  }
+
   function columnRefFor(edge) {
     return edge.direction === 'out'
       ? `column:${state.selected}[${edge.fromColumn}]`
@@ -234,8 +333,14 @@ export function modelLens({ model, linkFor, onOpenColumn }) {
     select(ref) {
       const name = /^table:(.*)$/.exec(ref)?.[1] ?? ref;
       if (!shape.tables.has(name)) return;
-      // A table filtered out of the list cannot be selected in it, so widen first.
-      if (state.role !== 'all' && shape.tables.get(name).role !== state.role) {
+      // A table filtered out of the list cannot be selected in it, so widen first —
+      // asked against whichever axis the active tab selects on.
+      const isKindTab = KIND_TABS.some((tab) => tab.key === state.role);
+      const visible = state.role === 'all'
+        || (isKindTab
+          ? byName.get(name)?.kind === state.role
+          : shape.tables.get(name).role === state.role);
+      if (!visible) {
         state.role = 'all';
         render();
       }

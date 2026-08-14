@@ -1,6 +1,6 @@
 {
   "name": "@pbi-lineage-lenz/core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Core analysis engine for Power BI PBIP projects — parse TMDL/PBIR/M, build dependency graphs, trace DAX lineage, and resolve model names back to physical source-system names",
   "type": "module",
   "main": "src/index.js",

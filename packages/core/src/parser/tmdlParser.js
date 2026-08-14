@@ -67,7 +67,10 @@ function unquoteName(name) {
  */
 export function parseTableFile(content, fileName) {
   const lines = content.split('\n').map(l => l.replace(/\r$/, ''));
-  const result = { name: '', columns: [], measures: [], calculatedColumns: [], partitions: [] };
+  const result = {
+    name: '', columns: [], measures: [], calculatedColumns: [], partitions: [],
+    isCalculated: false,
+  };
 
   // Find the table declaration
   let tableName = '';
@@ -145,6 +148,10 @@ export function parseTableFile(content, fileName) {
         const partType = partEqMatch ? partEqMatch[2].trim().toLowerCase() : '';
         const partition = parsePartitionBlock(lines, i, partName, partType);
         result.partitions.push(partition);
+        // `partition X = calculated` is TMDL saying the table is built by DAX rather than
+        // read from anywhere. Several places downstream already ask `table.isCalculated`
+        // and were reading `undefined` on every calculated table in a real model.
+        if (partType === 'calculated') result.isCalculated = true;
         i++;
         continue;
       }

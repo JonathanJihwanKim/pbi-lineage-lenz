@@ -144,12 +144,38 @@ describe('docs', () => {
     const markdown = readFileSync(target, 'utf-8');
 
     expect(code).toBe(0);
-    // Falls back to the folder name when the layout carries none. "# sample-pbip" is
-    // information; "# Power BI model" is a shrug.
-    expect(markdown).toContain('# sample-pbip');
+    // Named from the `.SemanticModel` folder the report's `definition.pbir` points at.
+    // "# Sample" is information; "# Power BI model" is a shrug.
+    expect(markdown).toContain('# Sample');
     // The dual name is the reason the tool exists; a data engineer searches for this.
     expect(markdown).toContain('mydb.dbo.fact_sales.sale_amount');
     expect(markdown).toContain('Sales');
+  });
+
+  it('asks for support once, after the work, and never in a build log', async () => {
+    // The ask is allowed to exist because the tool has just done something. It is not
+    // allowed to appear next to a failure, to survive `--quiet`, or to show up in CI —
+    // a build log is read when something is wrong, by someone who did not choose to run
+    // the command and cannot act on it.
+    const target = join(workspace, 'SPONSOR.md');
+    const previous = process.env.CI;
+    delete process.env.CI;
+    try {
+      const { out } = await cli('docs', SAMPLE, '-o', target);
+      expect(out).toContain('sponsors/JonathanJihwanKim');
+      // Below the result, never instead of it.
+      expect(out.indexOf('sponsors/JonathanJihwanKim')).toBeGreaterThan(out.indexOf(target));
+
+      const quiet = await cli('docs', SAMPLE, '-o', target, '--quiet');
+      expect(quiet.out).not.toContain('sponsors/');
+
+      process.env.CI = '1';
+      const inCi = await cli('docs', SAMPLE, '-o', target);
+      expect(inCi.out).not.toContain('sponsors/');
+    } finally {
+      if (previous === undefined) delete process.env.CI;
+      else process.env.CI = previous;
+    }
   });
 
   it('writes JSON that round-trips', async () => {
@@ -206,7 +232,10 @@ describe.skipIf(!hasGit)('diff', { timeout: 30_000 }, () => {
 
   beforeAll(() => {
     repo = mkdtempSync(join(tmpdir(), 'lenz-repo-'));
-    cpSync(SAMPLE, join(repo, 'Shop.SemanticModel'), { recursive: true });
+    // The model half only, renamed — `diff` is asked about a semantic model, and the
+    // point of the rename is that it finds one whatever the folder is called.
+    cpSync(join(SAMPLE, 'Sample.SemanticModel'), join(repo, 'Shop.SemanticModel'),
+      { recursive: true });
 
     const git = (...args) => execFileSync('git', args, {
       cwd: repo,

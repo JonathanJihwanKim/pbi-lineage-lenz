@@ -2,9 +2,9 @@
 
 The browser UI behind [PBI Lineage Lenz](https://github.com/JonathanJihwanKim/pbi-lineage-lenz).
 
-Renders an analyzed model as four lenses — model shape, source map, measures and pages —
-from the plain data [`@pbi-lineage-lenz/core`](https://www.npmjs.com/package/@pbi-lineage-lenz/core)
-produces.
+Renders an analyzed model as five lenses — overview, model shape, source map, measures and
+pages — from the plain data
+[`@pbi-lineage-lenz/core`](https://www.npmjs.com/package/@pbi-lineage-lenz/core) produces.
 
 ```bash
 npm install @pbi-lineage-lenz/viewer

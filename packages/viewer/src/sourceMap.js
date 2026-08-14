@@ -259,10 +259,19 @@ export function sourceMapLens({ model, names, onSelect, linkFor }) {
   };
 }
 
+/**
+ * Why a row has no physical column.
+ *
+ * Only one of these is a gap. "Unresolved" said about a field parameter's column is not a
+ * softer way of saying the same thing — it is wrong, and it is the difference between a
+ * reader scrolling past a row and a reader going to look for something that was never
+ * lost.
+ */
 function unresolvedText(column) {
   switch (column.origin) {
     case 'computed-dax': return 'calculated in DAX';
     case 'computed-pq': return 'added in Power Query';
+    case 'model-defined': return 'model metadata — no source';
     default: return 'unresolved';
   }
 }

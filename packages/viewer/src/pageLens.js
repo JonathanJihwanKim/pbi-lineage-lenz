@@ -226,13 +226,39 @@ export function pageLens({ model, index, linkFor, onOpenMeasure }) {
           ? (visual.neverShown ? 'hidden — no bookmark reveals it' : `hidden — ${visual.revealedBy.join(', ')}`)
           : 'visible')),
 
+      // Selecting an item from a calculation group changes what every measure on this
+      // visual evaluates to. That happens on a different table entirely, so a reader
+      // comparing this visual against a measure's DAX has no way to discover it.
+      visual.appliesCalculationGroups?.length > 0
+        ? h('div.note-calcgroup',
+            h('b', visual.appliesCalculationGroups.length === 1
+              ? 'Applies a calculation group.'
+              : 'Applies calculation groups.'),
+            ` ${visual.appliesCalculationGroups.map((g) => `"${g}"`).join(', ')} — `
+            + 'the selected item rewrites every measure on this visual.')
+        : null,
+
       visual.fields.length > 0
         ? h('div',
             h('div.label', { style: { margin: '16px 0 7px' } }, `shows (${visual.fields.length})`),
             visual.fields.map((field) => h('div', {
-              style: { padding: '3px 0', cursor: field.ref && onOpenMeasure ? 'pointer' : 'default' },
+              style: {
+                padding: '3px 0',
+                display: 'flex',
+                gap: '8px',
+                alignItems: 'baseline',
+                flexWrap: 'wrap',
+                cursor: field.ref && onOpenMeasure ? 'pointer' : 'default',
+              },
               onClick: field.ref && onOpenMeasure ? () => onOpenMeasure(field.ref) : null,
-            }, h('span.n-model', `${field.table ?? ''}${field.name ? `[${field.name}]` : ''}`))))
+            },
+              h('span.n-model', `${field.table ?? ''}${field.name ? `[${field.name}]` : ''}`),
+              // "Shows (29)" is only useful if it says how each of the 29 is reached. A
+              // field a slicer can put on the canvas is a different answer from one that
+              // is on it now, and the payload has carried that distinction all along.
+              viaLabel(field.via)
+                ? h('span.step', { title: viaTitle(field.via) }, viaLabel(field.via))
+                : null)))
         : h('div.reason', { style: { marginTop: '14px' } },
             'This visual references no model field — it is layout or navigation.'),
 

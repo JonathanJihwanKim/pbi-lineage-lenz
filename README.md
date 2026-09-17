@@ -167,9 +167,9 @@ table that only originates joins is a fact; one that only receives them is a dim
 
 **Measures** — the DAX, the physical columns underneath it, and every visual that shows it,
 each located on its page. That last one is the question that decides whether a change is
-safe.
+safe. An alias measure is read through every hidden measure below it, each with its DAX.
 
-![The measures lens: DAX, the physical columns it reads, and where it is shown](docs/images/measures.png)
+![The measures lens: an alias measure resolved through four hidden measures to the physical columns it reads](docs/images/measures.png)
 
 **Pages** — nothing is ever filtered out. Hidden visuals are listed with the bookmark that
 reveals them, and each field says *how* the visual reaches it: plotted, a dynamic title, a

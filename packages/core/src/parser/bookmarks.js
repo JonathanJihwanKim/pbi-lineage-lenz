@@ -84,6 +84,11 @@ function basename(path) {
   return String(path || '').split(/[\\/]/).pop().replace(/\.bookmark\.json$/i, '');
 }
 
+/** The key resolveVisibility() files a visual under. */
+export function visibilityKey(visual) {
+  return `${visual.pageId ?? visual.page ?? ''}/${visual.id}`;
+}
+
 /**
  * Resolve, per visual, whether anything ever reveals it.
  *
@@ -91,7 +96,8 @@ function basename(path) {
  *   and `parentGroupName`.
  * @param {Array<object>} bookmarks - Output of parseBookmarks().
  * @returns {Map<string, {isHidden: boolean, revealedBy: string[], hiddenBy: string[],
- *   neverShown: boolean}>} keyed by visual id
+ *   neverShown: boolean}>} keyed by visibilityKey(visual) — page and visual id together,
+ *   because a visual id is only unique within its page.
  */
 export function resolveVisibility(visuals = [], bookmarks = []) {
   const result = new Map();
@@ -116,7 +122,7 @@ export function resolveVisibility(visuals = [], bookmarks = []) {
       }
     }
 
-    result.set(visual.id, {
+    result.set(visibilityKey(visual), {
       isHidden: !!visual.isHidden,
       revealedBy,
       hiddenBy,

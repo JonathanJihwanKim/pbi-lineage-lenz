@@ -100,6 +100,11 @@ function extractDaxReferences(expression, currentTable, allNodes) {
   return refs;
 }
 
+/** Every column a table holds, sourced and calculated alike. */
+function columnsOf(table) {
+  return [...(table.columns || []), ...(table.calculatedColumns || [])];
+}
+
 /**
  * Build adjacency lists from edges.
  * @param {Array} edges - Graph edges.
@@ -140,19 +145,22 @@ export function buildGraph(parsedModel, parsedReport, enrichments) {
       const tableId = `table::${table.name}`;
       nodes.set(tableId, createNode(tableId, table.name, NODE_TYPES.TABLE, { table: table.name }));
 
-      if (table.columns) {
-        for (const col of table.columns) {
-          const colId = `column::${table.name}.${col.name}`;
-          nodes.set(colId, createNode(colId, col.name, NODE_TYPES.COLUMN, {
-            table: table.name,
-            dataType: col.dataType,
-            sourceColumn: col.sourceColumn,
-            expression: col.expression,
-            isHidden: col.isHidden || false
-          }));
-          // Column belongs to table
-          edges.push(createEdge(colId, tableId, EDGE_TYPES.COLUMN_TO_TABLE));
-        }
+      // The parser keeps calculated columns apart from sourced ones. Both are columns a
+      // measure or a visual can read, so both become nodes — leaving calculated columns
+      // out made every measure reading one lose that dependency, and impact analysis
+      // rooted at the columns underneath it stop short.
+      for (const col of columnsOf(table)) {
+        const colId = `column::${table.name}.${col.name}`;
+        nodes.set(colId, createNode(colId, col.name, NODE_TYPES.COLUMN, {
+          table: table.name,
+          dataType: col.dataType,
+          sourceColumn: col.sourceColumn,
+          expression: col.expression,
+          isCalculated: Boolean(col.expression),
+          isHidden: col.isHidden || false
+        }));
+        // Column belongs to table
+        edges.push(createEdge(colId, tableId, EDGE_TYPES.COLUMN_TO_TABLE));
       }
 
       if (table.measures) {
@@ -201,8 +209,8 @@ export function buildGraph(parsedModel, parsedReport, enrichments) {
       }
 
       // Also parse calculated column expressions
-      if (table.columns) {
-        for (const col of table.columns) {
+      {
+        for (const col of columnsOf(table)) {
           if (col.expression) {
             const colId = `column::${table.name}.${col.name}`;
             const refs = extractDaxReferences(col.expression, table.name, nodes);

@@ -475,3 +475,26 @@ describe('Calculation group changes', () => {
     expect(added.target.calcItemName).toBe('MTD');
   });
 });
+
+describe('Visual changes – ids repeat across pages', () => {
+  it('reports a removal on one page even when another page holds a visual of the same id', () => {
+    const visual = JSON.stringify({ name: 'card', position: { x: 0, y: 0 } });
+    const before = new Map([
+      ['definition/pages/Page1/page.json', JSON.stringify({ displayName: 'Overview' })],
+      ['definition/pages/Page2/page.json', JSON.stringify({ displayName: 'Details' })],
+      ['definition/pages/Page1/visuals/card/visual.json', visual],
+    ]);
+    const after = new Map([
+      ['definition/pages/Page1/page.json', JSON.stringify({ displayName: 'Overview' })],
+      ['definition/pages/Page2/page.json', JSON.stringify({ displayName: 'Details' })],
+      ['definition/pages/Page2/visuals/card/visual.json', visual],
+    ]);
+
+    const { changes } = detectChanges(before, after);
+    const removed = changes.find(c => c.type === CHANGE_TYPES.VISUAL_REMOVED);
+    const added = changes.find(c => c.type === CHANGE_TYPES.VISUAL_ADDED);
+    expect(removed?.target.pageName).toBe('Overview');
+    expect(added?.target.pageName).toBe('Details');
+    expect(added.target.visualId).toBe('card');
+  });
+});

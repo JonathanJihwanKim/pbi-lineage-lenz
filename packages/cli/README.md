@@ -23,7 +23,11 @@ npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
 | What does this model look like? | `handoff` — table roles read from the direction of relationships |
 | Why is this number not what the measure computes? | `handoff` — the calculation group rewriting it, and which visuals apply it |
 | What can this visual be made to show? | `handoff` — every field the bound field parameter offers |
+| What breaks if I drop this physical column? | `impact --column orders.order_count` — every measure that reads it, however deep, and every visual that shows one |
+| Which reports in this workspace use it? | `impact --all`, `docs --all`, `check --all` |
+| Can I join lineage to my warehouse catalog? | `docs --format csv` — one row per binding, physical name in parts, stable keys |
 | Did this change break anything? | `check` — exits non-zero on a broken reference |
+| Can I switch the gate on over years of existing debt? | `check --write-baseline`, then `check --baseline` |
 | What changed about the model in this PR? | `diff main..HEAD` |
 
 ## Calculation groups and field parameters
@@ -48,13 +52,18 @@ section with the DAX that does the work.
 ```bash
 pbi-lineage-lenz handoff <path> -o handoff.html   # the self-contained file
 pbi-lineage-lenz check   <path>                   # CI gate; non-zero only on broken refs
-pbi-lineage-lenz docs    <path> --format md|json|html
+pbi-lineage-lenz docs    <path> --format md|json|html|csv|ndjson
+pbi-lineage-lenz impact  <path> --column <name>   # what reads it, and which visuals
 pbi-lineage-lenz diff    main..HEAD <path>        # what changed about the model
 ```
 
 Every command takes the folder holding your `.Report` and `.SemanticModel` directories. When
 a folder holds several reports — a Fabric workspace synced to git — the pairing is read from
-`definition.pbir` rather than guessed, and the CLI says which pair it chose.
+`definition.pbir` rather than guessed, and the CLI says which pair it chose. `--all` analyses
+every report instead, each against the model it names, with shared models parsed once.
+
+The JSON, CSV and NDJSON shapes are a versioned contract:
+[docs/output-contract.md](https://github.com/JonathanJihwanKim/pbi-lineage-lenz/blob/main/docs/output-contract.md).
 
 ## Confidence, not coverage
 

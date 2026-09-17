@@ -6,32 +6,24 @@
  * of its arguments.
  */
 
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 import { parseArgs, OPTIONS } from './args.js';
+import { version } from './version.js';
 import { out, err, style, fail } from './report.js';
 import { handoffCommand, usage as handoffUsage } from './commands/handoff.js';
 import { checkCommand, usage as checkUsage } from './commands/check.js';
 import { docsCommand, usage as docsUsage } from './commands/docs.js';
 import { diffCommand, usage as diffUsage } from './commands/diff.js';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
+import { impactCommand, usage as impactUsage } from './commands/impact.js';
 
 export const COMMANDS = {
   handoff: { run: handoffCommand, usage: handoffUsage, describe: 'Build a self-contained HTML file for anyone' },
   check: { run: checkCommand, usage: checkUsage, describe: 'Verify the model; exit 1 when something is broken' },
-  docs: { run: docsCommand, usage: docsUsage, describe: 'Generate markdown, JSON, or HTML documentation' },
+  docs: { run: docsCommand, usage: docsUsage, describe: 'Generate documentation, or a flat lineage export' },
+  impact: { run: impactCommand, usage: impactUsage, describe: 'What reads a column or measure, and which visuals it reaches' },
   diff: { run: diffCommand, usage: diffUsage, describe: 'Describe what changed between two git refs' },
 };
 
-export function version() {
-  try {
-    return JSON.parse(readFileSync(join(HERE, '../package.json'), 'utf-8')).version;
-  } catch {
-    return '0.0.0';
-  }
-}
+export { version };
 
 function topUsage() {
   const width = Math.max(...Object.keys(COMMANDS).map((name) => name.length));
@@ -62,6 +54,7 @@ ${style.bold('Examples')}
   ${style.dim('npx pbi-lineage-lenz handoff ./MyReport -o handoff.html')}
   ${style.dim('npx pbi-lineage-lenz check ./MyReport --min-coverage 70')}
   ${style.dim('npx pbi-lineage-lenz docs ./MyReport -o MODEL.md')}
+  ${style.dim('npx pbi-lineage-lenz impact ./workspace --all --column order_agg_rpt.order_count')}
   ${style.dim('npx pbi-lineage-lenz diff main..HEAD')}
 `;
 }

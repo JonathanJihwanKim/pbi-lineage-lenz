@@ -68,7 +68,13 @@ visual that shows it — each located on its page. That last one is the question
 whether a change is safe.
 
 Unresolved inputs are **shown, never omitted**: an absent row would read as "nothing
-upstream", which is the opposite of the truth.
+upstream", which is the opposite of the truth. A calculated column is traced through to the
+columns its DAX reads, rather than stopping at a column with no source.
+
+**Resolves through** lists every measure and calculated column the measure is built on, each
+with its DAX, indented by depth. Hidden members are marked as implementation detail. For an
+alias measure — a body of just `[_Some Hidden Measure]` — this is where the logic actually
+is.
 
 Where a calculation group rewrites the measure, a note says so under the DAX. That note is
 the only warning a reader gets that the expression above it is not what the page displays.

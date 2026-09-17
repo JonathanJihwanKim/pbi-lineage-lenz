@@ -156,3 +156,41 @@ describe('buildGraph – DAX unqualified measure extraction', () => {
     expect(targets).toContain('measure::Measure.Customer Order Quality Deviation');
   });
 });
+
+describe('buildGraph – calculated columns', () => {
+  const tables = [
+    {
+      name: 'Sales',
+      columns: [{ name: 'amount', dataType: 'double' }, { name: 'cost', dataType: 'double' }],
+      calculatedColumns: [
+        { name: 'Margin', dataType: 'double', expression: "Sales[amount] - Sales[cost]" },
+      ],
+      measures: [{ name: 'Total Margin', expression: 'SUM ( Sales[Margin] )' }],
+    },
+  ];
+
+  it('creates a node for each calculated column', () => {
+    const graph = buildMinimalGraph(tables);
+    const node = graph.nodes.get('column::Sales.Margin');
+    expect(node).toBeDefined();
+    expect(node.metadata.isCalculated).toBe(true);
+    expect(node.metadata.expression).toBe('Sales[amount] - Sales[cost]');
+  });
+
+  it('links a measure through a calculated column to the columns underneath it', () => {
+    const graph = buildMinimalGraph(tables);
+    expect(graph.edges).toContainEqual(
+      { source: 'measure::Sales.Total Margin', target: 'column::Sales.Margin', type: 'measure_to_column' });
+    expect(graph.edges).toContainEqual(
+      { source: 'column::Sales.Margin', target: 'column::Sales.amount', type: 'calc_column_to_column' });
+
+    const downstream = new Set();
+    const queue = ['column::Sales.amount'];
+    while (queue.length) {
+      for (const next of graph.adjacency.downstream.get(queue.shift()) || []) {
+        if (!downstream.has(next)) { downstream.add(next); queue.push(next); }
+      }
+    }
+    expect(downstream.has('measure::Sales.Total Margin')).toBe(true);
+  });
+});

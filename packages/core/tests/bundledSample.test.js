@@ -52,14 +52,16 @@ describe('the bundled Contoso sample', () => {
     // of either name appears in the other, so this can only come from definition.pbir.
     expect(partition.modelName).toBe('directlake_import_composite');
     expect(partition.reportName).toBe('contoso_project');
-    // One pair here, so nothing to disambiguate and nothing to warn about.
-    expect(describeChoice(partition)).toBeNull();
+    // A thin second report reads the same model. The fuller report is the one shown, and
+    // the choice is said out loud rather than made silently.
+    expect(partition.pairs.map((p) => p.report).sort()).toEqual(['contoso_project', 'contoso_sales_thin']);
+    expect(describeChoice(partition)).toMatch(/holds 2 reports\. Showing contoso_project/);
   });
 
   it('parses the whole project', () => {
     expect(analysis.stats.tables).toBe(9);
-    expect(analysis.stats.measures).toBe(7);
-    expect(analysis.stats.visuals).toBe(14);
+    expect(analysis.stats.measures).toBe(12);
+    expect(analysis.stats.visuals).toBe(15);
     expect(analysis.report.pages).toHaveLength(2);
   });
 

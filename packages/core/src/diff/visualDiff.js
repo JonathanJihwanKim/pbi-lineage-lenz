@@ -20,8 +20,9 @@ export function detectVisualChanges(beforeFiles, afterFiles) {
   const afterVisuals = findAllVisualFiles(afterFiles);
 
   // Detect added visuals
-  for (const [visualId, info] of afterVisuals) {
-    if (!beforeVisuals.has(visualId)) {
+  for (const [key, info] of afterVisuals) {
+    if (!beforeVisuals.has(key)) {
+      const { visualId } = info;
       const config = parseJson(info.content);
       const title = extractVisualTitle(config) || visualId;
       const pageId = info.pageId;
@@ -37,8 +38,9 @@ export function detectVisualChanges(beforeFiles, afterFiles) {
   }
 
   // Detect removed visuals
-  for (const [visualId, info] of beforeVisuals) {
-    if (!afterVisuals.has(visualId)) {
+  for (const [key, info] of beforeVisuals) {
+    if (!afterVisuals.has(key)) {
+      const { visualId } = info;
       const config = parseJson(info.content);
       const title = extractVisualTitle(config) || visualId;
       const pageId = info.pageId;
@@ -54,9 +56,10 @@ export function detectVisualChanges(beforeFiles, afterFiles) {
   }
 
   // Detect changes to existing visuals
-  for (const [visualId, afterInfo] of afterVisuals) {
-    const beforeInfo = beforeVisuals.get(visualId);
+  for (const [key, afterInfo] of afterVisuals) {
+    const beforeInfo = beforeVisuals.get(key);
     if (!beforeInfo) continue;
+    const { visualId } = afterInfo;
 
     // Skip if identical
     if (beforeInfo.content === afterInfo.content) continue;
@@ -283,8 +286,14 @@ function extractVisualTitle(config) {
 }
 
 /**
- * Find all visual.json files grouped by visual ID.
- * Returns Map<visualId, { content, pageId, path }>
+ * Find all visual.json files, keyed by the folder that holds each one.
+ *
+ * A PBIR visual id is unique within a page of one report, not across them: two pages — or
+ * two reports in one workspace — routinely hold a visual of the same name. Keyed on the
+ * id alone, the second overwrote the first, so a visual added on one page could hide a
+ * visual removed from another and neither was reported.
+ *
+ * Returns Map<folderPath, { content, visualId, pageId, path }>
  */
 function findAllVisualFiles(files) {
   const visuals = new Map();
@@ -297,7 +306,8 @@ function findAllVisualFiles(files) {
         const visualId = parts[visualsIdx + 1];
         const pagesIdx = parts.findIndex(p => p.toLowerCase() === 'pages');
         const pageId = (pagesIdx !== -1 && pagesIdx + 1 < parts.length) ? parts[pagesIdx + 1] : '';
-        visuals.set(visualId, { content, pageId, path });
+        const key = parts.slice(0, visualsIdx + 2).join('/');
+        visuals.set(key, { content, visualId, pageId, path });
       }
     }
   }

@@ -15,6 +15,7 @@ import { run } from '../src/cli.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SAMPLE = join(__dirname, '../../../samples/sample-pbip');
+const CONTOSO = join(__dirname, '../../../samples/contoso');
 
 let workspace;
 
@@ -195,6 +196,112 @@ describe('docs', () => {
     const { code, err } = await cli('docs', SAMPLE, '-f', 'pdf');
     expect(code).toBe(1);
     expect(err).toContain('Unknown format');
+  });
+});
+
+describe('docs — flat export and workspaces', () => {
+  it('writes a CSV with the documented header', async () => {
+    const target = join(workspace, 'lineage.csv');
+    const { code } = await cli('docs', CONTOSO, '-f', 'csv', '-o', target, '--quiet');
+    expect(code).toBe(0);
+    const [header, first] = readFileSync(target, 'utf-8').split('\r\n');
+    expect(header.startsWith('contract_version,report_key,report,model_key,model,')).toBe(true);
+    expect(first.startsWith('1,contoso_project,')).toBe(true);
+  });
+
+  it('writes NDJSON to stdout, one parseable row per line', async () => {
+    const { code, out } = await cli('docs', CONTOSO, '-f', 'ndjson');
+    expect(code).toBe(0);
+    const rows = out.trim().split('\n').map((line) => JSON.parse(line));
+    expect(rows.length).toBeGreaterThan(10);
+  });
+
+  it('documents every report in a workspace, with an index', async () => {
+    const folder = join(workspace, 'estate');
+    const { code } = await cli('docs', CONTOSO, '--all', '-o', folder, '--quiet');
+    expect(code).toBe(0);
+    const index = readFileSync(join(folder, 'index.md'), 'utf-8');
+    expect(index).toContain('[contoso_sales_thin](reports/contoso_sales_thin.md)');
+    expect(index).toMatch(/\| sales\[Margin per Order\] \| 2 of 2 \|/);
+    expect(existsSync(join(folder, 'reports/contoso_project.md'))).toBe(true);
+  });
+
+  it('exports one flat file across every report', async () => {
+    const { out } = await cli('docs', CONTOSO, '--all', '-f', 'ndjson', '--page-maps');
+    const rows = out.trim().split('\n').map((line) => JSON.parse(line));
+    expect(new Set(rows.map((r) => r.report_key))).toEqual(new Set(['contoso_project', 'contoso_sales_thin']));
+    expect(rows.filter((r) => r.visual_key).every((r) => r.page_map?.startsWith('data:image/svg+xml;utf8,'))).toBe(true);
+  });
+
+  it('asks for a folder rather than printing many markdown files to a terminal', async () => {
+    const { code, err } = await cli('docs', CONTOSO, '--all');
+    expect(code).toBe(1);
+    expect(err).toContain('--out <folder>');
+  });
+});
+
+describe('impact', () => {
+  it('finds what reads a physical column across every report', async () => {
+    const { code, out } = await cli('impact', CONTOSO, '--all', '--column', 'dbo.sales.OrderKey', '--format', 'json');
+    expect(code).toBe(0);
+    const result = JSON.parse(out);
+    expect(result.totals.reports).toBe(2);
+    expect(result.reports[0].measures.map((m) => m.name)).toContain('Margin per Order');
+  });
+
+  it('exits 2 when nothing matches', async () => {
+    const { code } = await cli('impact', CONTOSO, '--measure', 'No Such Measure');
+    expect(code).toBe(2);
+  });
+
+  it('exits 1 with --fail-if-used when something reads the target', async () => {
+    const { code, out } = await cli('impact', CONTOSO, '--column', 'sales[OrderKey]', '--fail-if-used');
+    expect(code).toBe(1);
+    expect(out).toContain('--fail-if-used');
+  });
+
+  it('says what to look up when given nothing', async () => {
+    const { code, err } = await cli('impact', CONTOSO);
+    expect(code).toBe(1);
+    expect(err).toContain('--column');
+  });
+});
+
+describe('check — workspaces and baselines', () => {
+  it('checks every report and model in a folder', async () => {
+    const { code, out } = await cli('check', CONTOSO, '--all', '--json');
+    expect(code).toBe(0);
+    const parsed = JSON.parse(out);
+    expect(parsed.findings.find((f) => f.rule === 'unresolved').items[0]).toMatch(/^directlake_import_composite: /);
+  });
+
+  it('writes a baseline, passes against it, and fails once a recorded finding is fixed', async () => {
+    const file = join(workspace, 'baseline/.lenz-baseline.json');
+    const written = await cli('check', SAMPLE, '--write-baseline', file, '--fail-on', 'unused');
+    expect(written.code).toBe(0);
+
+    // The sample's unused measure fails this gate on its own, and is known debt here.
+    const against = await cli('check', SAMPLE, '--baseline', file, '--fail-on', 'unused', '--quiet');
+    expect(against.code).toBe(0);
+    expect(against.out).toMatch(/\d+ known issues? suppressed/);
+
+    // Record a finding that no longer exists: the file is now over-suppressing.
+    const document = JSON.parse(readFileSync(file, 'utf-8'));
+    document.findings.unused = [...(document.findings.unused || []), 'unused|measure:Sales[Long Gone]'];
+    writeFileSync(file, JSON.stringify(document));
+    const stale = await cli('check', SAMPLE, '--baseline', file, '--fail-on', 'unused');
+    expect(stale.code).toBe(1);
+    expect(stale.out).toContain('--update-baseline');
+
+    const updated = await cli('check', SAMPLE, '--baseline', file, '--fail-on', 'unused', '--update-baseline');
+    expect(updated.code).toBe(0);
+    expect(JSON.parse(readFileSync(file, 'utf-8')).findings.unused).not.toContain('unused|measure:Sales[Long Gone]');
+  });
+
+  it('explains a missing baseline file', async () => {
+    const { code, err } = await cli('check', SAMPLE, '--baseline', join(workspace, 'nope.json'));
+    expect(code).toBe(1);
+    expect(err).toContain('--write-baseline');
   });
 });
 

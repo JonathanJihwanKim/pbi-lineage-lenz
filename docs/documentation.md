@@ -23,22 +23,86 @@ That is the whole command. The rest of this page is what comes out of it.
 
 | Section | What it answers |
 |---|---|
-| **Overview** | How big the model is, how much of it is traced, and how sure the tool is. |
+| **Overview** | How big the model is, how much of it is traced, how sure the tool is — and the columns that genuinely could not be traced, listed by name. |
 | **Data sources** | Every connector, with the server and database resolved through parameters. |
 | **Model shape** | An ER diagram GitHub renders inline, plus bidirectional, inactive and dangling relationships. |
-| **Tables** | Each table with its physical source, every column beside its physical column, and the Power Query steps between them. |
-| **Measures** | Every measure, its DAX, and how many visuals show it. |
+| **Tables** | Each table with its physical source, every column beside its physical column — or the reason it has none — how many measures and visuals use it, and the Power Query steps between them. |
+| **Measures** | Every measure, its DAX, the hidden measures it resolves through, and how many visuals show it. |
 | **Calculation groups** | Each group, each item, and the DAX it applies — see below. |
 | **Field parameters** | Each parameter and every field it offers. |
-| **Report pages** | Each page and how many visuals sit on it. |
+| **Report pages** | Each page and how many visuals sit on it — with `--page-maps`, a picture of where each visual is. |
 
-### Three formats, for three audiences
+### Five formats, for four audiences
 
 | | |
 |---|---|
 | `--format md` | Commit it. Diffable, reviewable, renders on GitHub. **The default.** |
 | `--format html` | The handoff file — for someone who wants to click, not read. |
 | `--format json` | The parsed model, for building your own thing on top. |
+| `--format csv` | One row per binding, for joining lineage to a catalog or loading it into a semantic model. |
+| `--format ndjson` | The same rows, one JSON object per line. |
+
+The JSON, CSV and NDJSON shapes are a documented contract: **[output-contract.md](output-contract.md)**.
+
+---
+
+## Alias measures, read through
+
+A mature model is full of measures whose whole body is one line:
+
+```dax
+[_Margin per Order]
+```
+
+Documentation that prints that has documented nothing. The logic is in the hidden measures
+below it — hidden on purpose, because the field list is a product surface — so the generated
+file reads through them instead, without anyone unhiding anything:
+
+```markdown
+### sales[Margin per Order]
+
+​```dax
+[_Margin per Order]
+​```
+
+<details><summary>Resolves through 5 references (4 hidden)</summary>
+
+- `sales[_Margin per Order]` — measure, hidden
+  DIVIDE ( [_Margin Value], [_Order Volume] )
+  - `sales[_Margin Value]` — measure, hidden
+    [_Net Sales] - [Total Cost]
+  - `sales[_Order Volume]` — measure, hidden
+    DISTINCTCOUNT ( 'sales'[OrderKey] )
+  …
+</details>
+```
+
+Breadth-first, so it reads in resolution order; collapsed, because most readers want the
+headline expression. A reviewer can now see what a KPI computes without a Power BI licence,
+and see that a change to a hidden measure moves three visible ones before approving it.
+
+---
+
+## A whole workspace
+
+```bash
+npx pbi-lineage-lenz docs ./workspace --all -o lineage/
+```
+
+A Fabric workspace synced to git holds many reports over a few shared models, and the
+questions that matter span them: *which reports show this measure? which of the five thin
+reports over this model use it?* One report at a time cannot answer either by construction.
+
+`--all` reads every `definition.pbir`, pairs each report with the model it names, and parses
+each shared model **once**. It writes `index.md` — every report and how it paired, every
+model and the reports reading it, and for each shared model a table of which reports reach
+each measure — plus one document per report under `reports/`.
+
+A report whose model is not in the folder, or that connects to a published model
+(`byConnection`), is listed with the reason rather than skipped. One report that cannot be
+read is reported and the rest go on.
+
+`--all` works with `md`, `json`, `csv` and `ndjson`.
 
 ---
 
@@ -115,7 +179,7 @@ many visuals each parameter is bound by.
 
 Fields a parameter offers that the model no longer contains are **dropped rather than
 listed**. That is a broken reference, and inventing a row for it would hide it. `check`
-reports it instead.
+reports it instead, under `broken-nameof`, and fails the build on it.
 
 See [calculation-groups-and-field-parameters.md](calculation-groups-and-field-parameters.md)
 for what the tool can and cannot see.
@@ -135,6 +199,12 @@ Before any table listing means anything, the reader needs to know how much of it
 Three buckets, because they invite three different reactions, and lumping them together
 makes the percentage mean less rather than more. [confidence.md](confidence.md) explains the
 two axes in full.
+
+Directly under it, the columns that genuinely could not be traced are listed by name, with
+the reason and what uses each one. Everywhere else a column has no physical source, the
+table says why instead of leaving a blank — *field parameter*, *calculation group*,
+*calculated column (DAX)*, *computed in Power Query*. A reader then starts from the handful of
+real gaps, not from every blank cell.
 
 ---
 

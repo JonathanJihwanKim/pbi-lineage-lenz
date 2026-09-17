@@ -1001,3 +1001,17 @@ tr:hover .copy-link, .copy-link:focus-visible { opacity: 1; }
   line-height: 1.5;
 }
 .note-calcgroup b { color: var(--defined-tint); font-weight: 600; }
+
+/* A measure's reference chain. Hidden members recede: they are implementation detail. */
+.ref-chain { display: flex; flex-direction: column; gap: 8px; }
+.ref-chain-item { border-left: 2px solid var(--rule-strong); padding-left: 10px; }
+.ref-chain-item.is-hidden { border-left-style: dashed; }
+.ref-chain-name { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; }
+.ref-chain-tag {
+  font-size: 11px;
+  color: var(--ink-3);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 0 7px;
+}
+.ref-chain-dax { margin: 6px 0 0; font-size: 12px; }

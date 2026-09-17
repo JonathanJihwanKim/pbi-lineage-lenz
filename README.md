@@ -10,6 +10,8 @@ whole picture, as one HTML file, to someone who has never opened Power BI.
 npx pbi-lineage-lenz docs    ./MyReport -o MODEL.md      # documentation you commit
 npx pbi-lineage-lenz handoff ./MyReport -o handoff.html  # one file, for anyone
 npx pbi-lineage-lenz check   ./MyReport                  # the CI gate
+npx pbi-lineage-lenz impact  ./workspace --all --column dbo.orders.order_count
+                                                          # what breaks if I drop it?
 ```
 
 [**▶ See a live example**](https://jonathanjihwankim.github.io/pbi-lineage-lenz/demo.html) —
@@ -111,13 +113,21 @@ Applied by **1** visual: Selected metric by month (Overview).
     CALCULATE ( SELECTEDMEASURE (), DATESYTD ( 'date'[Date] ) )
 ```
 
-Three formats, for three audiences:
+An alias measure — a body of just `[_Some Hidden Measure]` — is read through every hidden
+level to the DAX that does the work, and a column with no physical source says *why* rather
+than leaving a blank.
+
+Five formats, for four audiences:
 
 | | |
 |---|---|
 | `--format md` | Commit it. Diffable, reviewable, renders on GitHub. **The default.** |
 | `--format html` | The handoff file — for someone who wants to click, not read. |
 | `--format json` | The parsed model, for building your own thing on top. |
+| `--format csv` / `ndjson` | One row per binding, physical name in parts — for joining lineage to a warehouse catalog, or loading it into a semantic model a stakeholder can slice. |
+
+The machine-readable shapes are a documented, versioned contract, with keys that stay unique
+across a whole workspace: **[output-contract.md](docs/output-contract.md)**.
 
 **Why generated rather than written:** a hand-written data dictionary is wrong the first
 time someone renames a column, and nobody finds out until a decision has already been made
@@ -197,13 +207,38 @@ Only the person producing it needs Chrome or Edge. Everyone reading it needs a b
 
 Every measure and column has a link you can paste straight into a chat.
 
+### What breaks if I drop this column?
+
+Every lens starts from something a Power BI developer knows. A data engineer knows
+`lakehouse.dbo.orders.order_count`, and that is what `impact` takes:
+
+```bash
+npx pbi-lineage-lenz impact ./workspace --all --column orders.order_count
+```
+
+It returns the measures that read the column — following every measure-to-measure reference,
+because a visual showing `[Margin %]` never names the column two measures down — with the hop
+count and path, then every visual those reach, located on its page and grouped by report.
+`--fail-if-used` makes it a gate in a warehouse repository's CI.
+
+### A whole workspace, as one thing
+
+A Fabric workspace synced to git is many thin reports over a few shared models, and the
+dangerous questions span them: *which of the five reports over this model show this measure?*
+`--all` reads every report against the model it names, parses each shared model once, and
+answers across all of them — in `docs`, `check` and `impact`.
+
 ### A CI gate people keep switched on
 
 `check` fails the build on a broken reference and *reports* everything else, because a gate
 that fails on judgement calls gets disabled within a week — and a disabled gate catches
 nothing.
 
-**→ [Every rule, and the ready-made workflow](docs/ci.md)**
+On a repository with history, `--write-baseline` records today's findings as known debt, and
+`--baseline` fails only on new ones — so the gate can go on today instead of after a cleanup
+that never gets scheduled.
+
+**→ [Every rule, baselines, and the ready-made workflow](docs/ci.md)**
 
 ### Both names, everywhere
 
@@ -254,6 +289,12 @@ npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
 # CI gate — exits 1 on a broken reference
 npx pbi-lineage-lenz check ./MyReport
 
+# What reads this physical column, across every report in the folder
+npx pbi-lineage-lenz impact ./workspace --all --column orders.order_count
+
+# One row per binding, for a warehouse catalog or a semantic model
+npx pbi-lineage-lenz docs ./workspace --all --format csv -o lineage.csv
+
 # What changed about the model, not which lines moved
 npx pbi-lineage-lenz diff main..HEAD
 ```
@@ -261,7 +302,7 @@ npx pbi-lineage-lenz diff main..HEAD
 Point any command at the project root, the `.SemanticModel` folder, or a bare `definition`
 folder. If a folder holds several reports — a Fabric workspace synced to git usually does —
 it reads each report's `definition.pbir`, pairs it with the model that report actually
-names, and tells you which one it chose.
+names, and tells you which one it chose. Add `--all` to analyse every report instead.
 
 Try it against the bundled sample right now:
 
@@ -314,12 +355,14 @@ untraced would make the percentage mean less rather than more.
 Two real models, both asserted in the test suite, so a parser change that quietly collapses
 them fails the build.
 
-**The bundled sample** — Contoso on a Fabric Lakehouse: 9 tables, 14 visuals, committed at
-[`samples/contoso/`](samples/contoso/) so you can reproduce every number yourself:
+**The bundled sample** — Contoso on a Fabric Lakehouse: 9 tables, two reports over one
+shared model, committed at [`samples/contoso/`](samples/contoso/) so you can reproduce every
+number yourself:
 
 - **95%** of source-backed columns traced, **none assumed**
 - Direct Lake, import and calculated tables all resolved
 - A calculation group and a field parameter, both bound to a real visual
+- An alias measure resolving through three levels of hidden measures
 - 0 broken references, 0 dangling visual references
 
 **A real production report** — 61 tables, 473 columns, 274 measures, 542 visuals:
@@ -362,11 +405,12 @@ and so is a star.
 
 | | |
 |---|---|
-| [Documentation guide](docs/documentation.md) | The `docs` command in full: every section, all three formats, the CI recipe. |
+| [Documentation guide](docs/documentation.md) | The `docs` command in full: every section, every format, whole workspaces, the CI recipe. |
+| [Output contract](docs/output-contract.md) | Keys, the JSON payload, the flat export's columns, sourceless reasons, page maps, baseline files. |
 | [The five lenses](docs/lenses.md) | What each answers, deep links, keyboard shortcuts, accessibility. |
 | [Confidence and coverage](docs/confidence.md) | What `exact` / `inferred` / `unknown` mean, and how coverage is counted. |
 | [Calculation groups and field parameters](docs/calculation-groups-and-field-parameters.md) | What the tool follows, and what it cannot see. |
-| [The CI gate](docs/ci.md) | Every rule, `--fail-on`, `--min-coverage`, the ready-made workflow. |
+| [The CI gate](docs/ci.md) | Every rule, `--fail-on`, `--min-coverage`, baselines, `impact --fail-if-used`, the ready-made workflow. |
 | [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Sponsors](SPONSORS.md) | |
 
 ## Related projects
@@ -389,7 +433,7 @@ send. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```bash
 npm install
-npm test                # 533 tests, on Linux and Windows
+npm test                # 596 tests, on Linux and Windows
                         # plus 44 more against a private production model, on the
                         # maintainer's disk only — they skip themselves everywhere else
 npm run dev             # the web app
@@ -400,7 +444,7 @@ npm run build           # the web app, for GitHub Pages
 packages/core      parsing, naming, graph, diff — platform independent
 packages/viewer    read-only UI; no file I/O, no network
 packages/handoff   one self-contained HTML file from a parsed model
-packages/export    markdown, mermaid ERD, and JSON
+packages/export    markdown, mermaid ERD, JSON, the flat export, page maps
 packages/cli       npx pbi-lineage-lenz
 apps/web           the browser app
 samples/contoso    the model behind every screenshot above

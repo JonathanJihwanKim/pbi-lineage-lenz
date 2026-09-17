@@ -20,9 +20,11 @@ defect, and failing a build on either teaches the team to delete the step.
 | rule | what it finds | fails the build |
 |---|---|---|
 | `broken` | DAX reading a column or measure that does not exist | **yes** |
+| `broken-nameof` | a field parameter offering a field that does not exist | **yes** |
 | `dangling-visuals` | a visual referencing a measure that does not exist | no |
 | `unused` | measures nothing reaches, following measure-to-measure references | no |
-| `coverage` | columns with no physical source | only with `--min-coverage` |
+| `unresolved` | columns reading from a source that could not be traced | no |
+| `coverage` | the traced percentage | only with `--min-coverage` |
 | `dead-visuals` | hidden visuals that no bookmark reveals | no |
 
 ### `broken`
@@ -33,6 +35,17 @@ table leaves exactly this trace.
 Everything is compared **case-insensitively**, because DAX is. `[Orders on Time %]` resolves
 to a measure defined as `Orders On Time %` in Power BI, and a gate that calls that broken is
 reporting its own comparison rather than a defect.
+
+### `broken-nameof`
+
+A field parameter is a list of `NAMEOF` references. When one names a measure that has since
+been deleted, nothing errors: the slicer entry is still there, and choosing it puts nothing on
+the visual. That is as broken as DAX reading a deleted column, and quieter, so it fails the
+build by default.
+
+New in 2.0.0. A repository with years of reports behind it may well have some — see
+[adopting the gate](#adopting-the-gate-on-a-repository-with-history) before upgrading a gate
+that is already switched on.
 
 ### `dangling-visuals`
 
@@ -57,6 +70,14 @@ other 87 were building blocks feeding measures that *are* displayed.
 
 Measures reached only through a dynamic title, a button, or a field parameter count as used,
 because they are.
+
+### `unresolved`
+
+Columns whose `sourceless` reason is `unresolved` — the real gaps. Field parameter and
+calculation group columns, calculated columns and columns added in Power Query have no source
+by definition and are never listed; a rule that fired on every one of them would be muted on
+day one. Reported, not failed. With a [baseline](#adopting-the-gate-on-a-repository-with-history)
+and `--fail-on unresolved`, it fails only when the list grows.
 
 ### `coverage`
 
@@ -85,6 +106,63 @@ npx pbi-lineage-lenz check ./MyReport --fail-on broken,dangling-visuals
 
 Any comma-separated subset of the rule names. `--quiet` prints only problems, which is what
 you want in a log somebody reads after the fact.
+
+## Adopting the gate on a repository with history
+
+There is a second way a gate gets switched off within a week: **failing on day one.** Run
+`check` over a repository with years of reports behind it and it may find two dozen genuine
+broken references in reports other teams own. The author of an unrelated pull request can
+fix all of them or turn the gate off — and the next broken reference arrives unnoticed.
+
+A baseline lets the gate go on today:
+
+```bash
+# once, when adopting
+npx pbi-lineage-lenz check ./reports --all --write-baseline .lenz-baseline.json
+git add .lenz-baseline.json
+
+# in CI, from then on
+npx pbi-lineage-lenz check ./reports --all --baseline .lenz-baseline.json
+```
+
+- **Only findings not in the file fail.** Existing debt is acknowledged, not accepted
+  silently.
+- **The suppressed count prints on every run**, even under `--quiet` — *"29 known issues
+  suppressed"* — so the debt stays visible.
+- **A recorded finding that has been fixed fails too**, until it is removed. Run with
+  `--update-baseline` to remove fixed findings; it never adds new ones. The file can only
+  shrink as debt is paid, and can never go on suppressing something that might come back.
+- **Findings are matched on stable keys** — the measure, the visual key, the reference —
+  never a position, so moving a visual does not resurrect one.
+- **Commit the file.** It is a reviewable ledger of report debt, and a pull request that
+  grows it says so in the diff.
+
+`coverage` is a threshold rather than a list of defects, so it cannot be baselined. The file
+format is in [output-contract.md](output-contract.md#baseline-files).
+
+## A whole workspace
+
+```bash
+npx pbi-lineage-lenz check ./workspace --all
+```
+
+Every report, against the model it names. A finding about a model — a broken reference, a
+field parameter entry, an unresolved column — is reported once, however many reports read
+that model. A measure is `unused` only when **no** report over its model reaches it: a measure
+one thin report never shows may be the headline of another. Reports that could not be paired
+with a model are listed before the findings.
+
+## Before dropping a column
+
+```bash
+npx pbi-lineage-lenz impact ./reports --all --column order_agg_rpt.order_count --fail-if-used
+```
+
+For a warehouse repository's CI: a change that drops a column fails its own build while a
+report still reads it. `impact` matches the physical name on its last parts, follows every
+measure-to-measure reference, and exits `1` with `--fail-if-used` when anything reaches the
+column — `2` if nothing by that name exists, so a typo does not pass as "unused". Without
+`--fail-if-used` it prints the measures, hop by hop, and the visuals, page by page.
 
 ## A ready-made workflow
 

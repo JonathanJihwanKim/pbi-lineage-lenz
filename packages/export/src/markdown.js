@@ -1,4 +1,6 @@
-import { describeModelShape, ROLE_ORDER, TABLE_ROLE } from '@pbi-lineage-lenz/viewer';
+import {
+  describeModelShape, ROLE_ORDER, TABLE_ROLE, buildIndex, describeReferences, columnUsage,
+} from '@pbi-lineage-lenz/viewer';
 
 /**
  * Markdown documentation from a viewer model.
@@ -45,19 +47,49 @@ function confidence(value) {
 }
 
 /**
+ * What goes in the physical column cell when there is no physical column.
+ *
+ * `_unresolved_` on a field parameter's column was the old answer, and it was wrong: the
+ * column has no source by definition. Only a real gap is called unresolved.
+ */
+const SOURCELESS_LABEL = {
+  'field-parameter': '_field parameter_',
+  'calculation-group': '_calculation group_',
+  'calculated-column': '_calculated column (DAX)_',
+  'computed-in-m': '_computed in Power Query_',
+  unresolved: '_unresolved_',
+};
+
+/** "3 measures · 7 visuals on 2 pages", or an em dash when nothing reads the column. */
+function usedBy(usage) {
+  if (!usage || (usage.measures === 0 && usage.visuals === 0)) return '—';
+  const parts = [];
+  if (usage.measures > 0) parts.push(`${usage.measures} measure${usage.measures === 1 ? '' : 's'}`);
+  if (usage.visuals > 0) {
+    parts.push(`${usage.visuals} visual${usage.visuals === 1 ? '' : 's'} on `
+      + `${usage.pages} page${usage.pages === 1 ? '' : 's'}`);
+  }
+  return parts.join(' · ');
+}
+
+/**
  * Render a model as markdown.
  *
  * @param {object} model - Viewer model from toViewerModel().
  * @param {object} [options]
  * @param {boolean} [options.dax=true] - Include measure expressions.
+ * @param {boolean} [options.pageMaps=false] - List each page's visuals with its page map,
+ *   from `visual.pageMap` (see attachPageMaps()).
  * @returns {string}
  */
-export function toMarkdown(model, { dax = true } = {}) {
+export function toMarkdown(model, { dax = true, pageMaps = false } = {}) {
   const name = model.meta?.modelName || 'Power BI model';
   const generated = (model.meta?.generatedAt || new Date().toISOString()).slice(0, 10);
   const stats = model.stats?.confidence;
 
   const sections = [];
+  const index = buildIndex(model);
+  const usage = columnUsage(model, index);
 
   sections.push(`# ${name}`, '');
   sections.push(
@@ -112,6 +144,30 @@ export function toMarkdown(model, { dax = true } = {}) {
     );
   }
 
+  // The blanks a data engineer reads first, because they are where the tool might be wrong.
+  // Every other column without a source has a reason in the Tables section; these are the
+  // ones that need a person.
+  const unresolved = model.columns.filter((column) => column.sourceless === 'unresolved');
+  if (unresolved.length > 0) {
+    sections.push(
+      `### ${unresolved.length} column${unresolved.length === 1 ? '' : 's'} unresolved`,
+      '',
+      'Each of these reads from a source that could not be traced. Every other column without '
+      + 'a physical column below has a reason instead — a field parameter, a calculation group, '
+      + 'a calculated column, or a column added in Power Query.',
+      '',
+      table(
+        ['Column', 'Why', 'Used by'],
+        unresolved.map((column) => [
+          `${column.table}[${column.name}]`,
+          column.reason ?? '',
+          usedBy(usage.get(column.ref)),
+        ]),
+      ),
+      '',
+    );
+  }
+
   // ── Sources ──
   if (model.sources.length > 0) {
     sections.push('## Data sources', '');
@@ -136,7 +192,9 @@ export function toMarkdown(model, { dax = true } = {}) {
     ['Table', 'Physical source', 'Columns', 'Measures'],
     model.tables.map((t) => [
       `[${t.name}](#${anchor(t.name)})`,
-      t.physicalPath ?? '_unresolved_',
+      t.physicalPath ?? (t.kind === 'fieldParameter'
+        ? SOURCELESS_LABEL['field-parameter']
+        : t.kind === 'calculationGroup' ? SOURCELESS_LABEL['calculation-group'] : '_unresolved_'),
       t.columnCount,
       t.measureCount,
     ]),
@@ -148,12 +206,13 @@ export function toMarkdown(model, { dax = true } = {}) {
 
     const columns = model.columns.filter((column) => column.table === modelTable.name);
     sections.push(table(
-      ['Column', 'Physical column', 'Type', 'Confidence'],
+      ['Column', 'Physical column', 'Type', 'Confidence', 'Used by'],
       columns.map((column) => [
         column.name,
-        column.physicalPath ?? '_unresolved_',
+        column.physicalPath ?? SOURCELESS_LABEL[column.sourceless] ?? '_unresolved_',
         column.dataType ?? '',
         confidence(column.confidence),
+        usedBy(usage.get(column.ref)),
       ]),
     ), '');
 
@@ -188,6 +247,7 @@ export function toMarkdown(model, { dax = true } = {}) {
       sections.push(`### ${measure.table}[${measure.name}]`, '');
       if (measure.description) sections.push(measure.description, '');
       sections.push('```dax', measure.expression.trim(), '```', '');
+      sections.push(...referenceChain(measure, index));
 
       const shown = measure.usedByVisuals.length;
       sections.push(
@@ -270,9 +330,58 @@ export function toMarkdown(model, { dax = true } = {}) {
         page.width && page.height ? `${page.width}×${page.height}` : '',
       ]),
     ), '');
+
+    if (pageMaps) {
+      for (const page of model.pages) {
+        const visuals = (model.visuals || []).filter((visual) => visual.page === page.id && visual.pageMap);
+        if (visuals.length === 0) continue;
+        sections.push(`### ${page.name}`, '');
+        sections.push(table(
+          ['Visual', 'Type', 'Where'],
+          visuals.map((visual) => [
+            visual.title || visual.id,
+            visual.type ?? '',
+            `![${visual.id}](${visual.pageMap})`,
+          ]),
+        ), '');
+      }
+    }
   }
 
   return `${sections.join('\n').replace(/\n{3,}/g, '\n\n').trim()}\n`;
+}
+
+/**
+ * The hidden measures and calculated columns a measure resolves through, with their DAX.
+ *
+ * An alias measure's body is `[_Some Hidden Measure]`, which documents nothing; the logic a
+ * reviewer needs is in the levels below. Collapsed, because most readers want the headline
+ * expression and only some want the chain.
+ */
+function referenceChain(measure, index) {
+  const chain = describeReferences(measure, index);
+  if (chain.length === 0) return [];
+
+  const hidden = chain.filter((entry) => entry.isHidden).length;
+  const lines = [
+    `<details><summary>Resolves through ${chain.length} reference${chain.length === 1 ? '' : 's'}`
+      + `${hidden > 0 ? ` (${hidden} hidden)` : ''}</summary>`,
+    '',
+  ];
+  for (const entry of chain) {
+    const indent = '  '.repeat(entry.depth - 1);
+    const label = entry.kind === 'column' ? 'calculated column' : 'measure';
+    lines.push(`${indent}- \`${entry.table}[${entry.name}]\` — ${label}${entry.isHidden ? ', hidden' : ''}`);
+    if (entry.expression) {
+      const body = entry.expression.trim().split(/\r?\n/).map((line) => `${indent}  ${line}`);
+      lines.push('', `${indent}  ` + '```dax', ...body, `${indent}  ` + '```', '');
+    }
+  }
+  if (measure.referencesTruncated) {
+    lines.push('', '_The chain is longer than shown; it was cut at the depth or size limit._');
+  }
+  lines.push('', '</details>', '');
+  return lines;
 }
 
 /**

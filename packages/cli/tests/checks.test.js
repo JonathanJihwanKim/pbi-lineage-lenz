@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { runChecks, exitCodeFor, DEFAULT_FAIL_ON } from '../src/checks.js';
+import { runChecks, runEstateChecks, exitCodeFor, DEFAULT_FAIL_ON } from '../src/checks.js';
 
 function measure(table, name, extra = {}) {
   return {
@@ -276,3 +276,82 @@ describe('exitCodeFor', () => {
     expect(exitCodeFor(unusedOnly, new Set(['unused']))).toBe(1);
   });
 });
+
+describe('broken field parameter entries', () => {
+  it('reports a NAMEOF target the model does not contain, and fails on it by default', () => {
+    const findings = runChecks(model({
+      tables: [
+        { ref: 'table:Sales', name: 'Sales' },
+        { ref: 'table:Metric', name: 'Metric', kind: 'fieldParameter', offersMissing: [{ table: 'Sales', name: 'Deleted' }] },
+      ],
+    }));
+    const finding = find(findings, 'broken-nameof');
+    expect(finding.items).toEqual(['Metric offers Sales[Deleted], which does not exist']);
+    expect(finding.entries[0].key).toBe('broken-nameof|table:Metric|Sales[Deleted]');
+    expect(exitCodeFor(findings, DEFAULT_FAIL_ON)).toBe(1);
+  });
+});
+
+describe('unresolved columns', () => {
+  it('lists only real gaps, never machinery, and does not fail by default', () => {
+    const findings = runChecks(model({
+      columns: [
+        { ref: 'column:Sales[A]', table: 'Sales', name: 'A', sourceless: 'unresolved', reason: 'No table.' },
+        { ref: 'column:Sales[B]', table: 'Sales', name: 'B', sourceless: 'calculated-column' },
+        { ref: 'column:P[C]', table: 'P', name: 'C', sourceless: 'field-parameter' },
+      ],
+    }));
+    expect(find(findings, 'unresolved').items).toEqual(['Sales[A] — No table.']);
+    expect(exitCodeFor(findings, DEFAULT_FAIL_ON)).toBe(0);
+  });
+});
+
+describe('finding keys', () => {
+  it('builds every key from identities, so a finding keeps its key when its text changes', () => {
+    const findings = runChecks(model({
+      measures: [measure('Sales', 'Forgotten')],
+      visuals: [{ ref: 'visual:p1/v1', key: 'R/p1/v1', id: 'v1', page: 'p1', title: 'Old', neverShown: true, fields: [] }],
+      pages: [{ id: 'p1', name: 'Overview' }],
+    }));
+    expect(find(findings, 'unused').entries).toEqual([{ key: 'unused|measure:Sales[Forgotten]', text: 'Sales[Forgotten]' }]);
+    expect(find(findings, 'dead-visuals').entries[0].key).toBe('dead-visuals|R/p1/v1');
+  });
+});
+
+describe('checks across a workspace', () => {
+  const shared = (reportKey, usedByVisuals) => model({
+    meta: { modelName: 'M', modelKey: 'M', reportKey },
+    measures: [
+      measure('Sales', 'Headline', { usedByVisuals }),
+      measure('Sales', 'Broken', { dependsOn: { measures: [], columns: ['Sales[Gone]'], tables: [] } }),
+    ],
+  });
+
+  it('reports a model-level finding once, however many reports read the model', () => {
+    const findings = runEstateChecks([shared('A', []), shared('B', ['visual:p/v'])]);
+    expect(find(findings, 'broken').entries.map((e) => e.key))
+      .toEqual(['M::broken|measure:Sales[Broken]|column:Sales[Gone]']);
+  });
+
+  it('calls a measure unused only when no report over its model reaches it', () => {
+    const findings = runEstateChecks([shared('A', []), shared('B', ['visual:p/v'])]);
+    // Headline is shown by B, so A not showing it is not a finding.
+    expect(find(findings, 'unused').items).toEqual(['M: Sales[Broken]']);
+  });
+});
+
+describe('unused, with references spelled in a different case', () => {
+  it('does not call a measure unused because a caller capitalised it differently', () => {
+    const findings = runChecks(model({
+      measures: [
+        measure('Sales', 'Orders with Target not Met'),
+        measure('Sales', 'Headline', {
+          usedByVisuals: ['visual:p/v'],
+          dependsOn: { measures: ['Sales[Orders with Target Not Met]'], columns: [], tables: [] },
+        }),
+      ],
+    }));
+    expect(find(findings, 'unused').items).toEqual([]);
+  });
+});
+

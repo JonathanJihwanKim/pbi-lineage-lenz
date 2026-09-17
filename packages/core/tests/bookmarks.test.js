@@ -116,8 +116,8 @@ describe('resolveVisibility', () => {
     const state = resolveVisibility(visuals, parseBookmarks([
       bookmarkFile('Show it', 'p1', { visuals: { v1: shownContainer } }),
     ]));
-    expect(state.get('v1').revealedBy).toEqual(['Show it']);
-    expect(state.get('v1').neverShown).toBe(false);
+    expect(state.get('p1/v1').revealedBy).toEqual(['Show it']);
+    expect(state.get('p1/v1').neverShown).toBe(false);
   });
 
   it('resolves a group visual by its own id', () => {
@@ -126,32 +126,44 @@ describe('resolveVisibility', () => {
     const state = resolveVisibility(visuals, parseBookmarks([
       bookmarkFile('Show pane', 'p1', { groups: { g1: { isHidden: false } } }),
     ]));
-    expect(state.get('g1').revealedBy).toEqual(['Show pane']);
+    expect(state.get('p1/g1').revealedBy).toEqual(['Show pane']);
   });
 
   it('lets a visual inherit its containing group state', () => {
     const state = resolveVisibility(visuals, parseBookmarks([
       bookmarkFile('Show pane', 'p1', { groups: { g1: { isHidden: false } } }),
     ]));
-    expect(state.get('v2').revealedBy).toEqual(['Show pane']);
+    expect(state.get('p1/v2').revealedBy).toEqual(['Show pane']);
   });
 
   it('flags a hidden visual no bookmark ever reveals as dead UI', () => {
     const state = resolveVisibility(visuals, parseBookmarks([
       bookmarkFile('Elsewhere', 'p1', { visuals: { v1: hiddenContainer } }),
     ]));
-    expect(state.get('v1').neverShown).toBe(true);
+    expect(state.get('p1/v1').neverShown).toBe(true);
   });
 
   it('never flags a visible visual as dead', () => {
     const state = resolveVisibility(visuals, []);
-    expect(state.get('v3').neverShown).toBe(false);
+    expect(state.get('p1/v3').neverShown).toBe(false);
   });
 
   it('ignores bookmarks that target another page', () => {
     const state = resolveVisibility(visuals, parseBookmarks([
       bookmarkFile('Other page', 'p2', { visuals: { v1: shownContainer } }),
     ]));
-    expect(state.get('v1').revealedBy).toEqual([]);
+    expect(state.get('p1/v1').revealedBy).toEqual([]);
+  });
+});
+
+describe('resolveVisibility – visual ids repeat across pages', () => {
+  it('keeps two same-id visuals on different pages apart', () => {
+    const visuals = [
+      { id: 'card', pageId: 'p1', isHidden: true, parentGroupName: null },
+      { id: 'card', pageId: 'p2', isHidden: false, parentGroupName: null },
+    ];
+    const state = resolveVisibility(visuals, []);
+    expect(state.get('p1/card').neverShown).toBe(true);
+    expect(state.get('p2/card').neverShown).toBe(false);
   });
 });

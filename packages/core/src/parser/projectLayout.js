@@ -177,6 +177,8 @@ export function partitionPbip(files) {
       reportFiles: reportFiles && reportFiles.size > 0 ? reportFiles : null,
       modelName: baseName(modelRoot),
       reportName: baseName(reportRoot),
+      modelKey: keyOf(modelRoot),
+      reportKey: reportRoot !== null ? keyOf(reportRoot) : null,
       layout: reportRoot !== null
         ? (allPairs.length > 1 ? 'project-multi' : 'project')
         : 'semantic-model',
@@ -207,6 +209,96 @@ export function partitionPbip(files) {
 }
 
 /**
+ * A report's or model's key: its folder path within what was analysed, suffix dropped.
+ *
+ * The folder is the one identity a PBIR item carries that is both stable across runs and
+ * unique within a workspace — two reports can share a display name, never a path.
+ */
+export function keyOf(root) {
+  if (root === null || root === undefined) return null;
+  return root.replace(/\.(SemanticModel|Report)$/i, '') || null;
+}
+
+/**
+ * Every report and every model in a folder, each report paired with the model it names.
+ *
+ * partitionPbip() answers "which one did you mean?", because a person opening one report
+ * wants one report. A workspace-wide question — which reports use this column, which of
+ * the five thin reports over this model show this measure — needs all of them, and needs
+ * the reports that could not be paired listed rather than skipped: a report whose model
+ * is not in the repository is itself something the reader should know.
+ *
+ * @param {Map<string, string>} files - Path (any separator) to contents.
+ * @returns {{
+ *   models: Array<{key: string, name: string, root: string, files: Map, reports: string[]}>,
+ *   reports: Array<{key: string, name: string, root: string, files: Map, modelKey: string|null,
+ *     visualCount: number, problem: string|null}>
+ * }}
+ */
+export function partitionEstate(files) {
+  const normalized = new Map();
+  for (const [path, content] of files) normalized.set(normalizePath(path), content);
+
+  const paths = [...normalized.keys()];
+  const modelRoots = rootsEndingIn(paths, '.semanticmodel');
+  const reportRoots = rootsEndingIn(paths, '.report');
+  const known = new Set(modelRoots);
+  const baseName = (root) => root.split('/').pop().replace(/\.(SemanticModel|Report)$/i, '');
+
+  const models = modelRoots.map((root) => ({
+    key: keyOf(root),
+    name: baseName(root),
+    root,
+    files: definitionOf(normalized, root),
+    reports: [],
+  }));
+  const modelByRoot = new Map(models.map((model) => [model.root, model]));
+
+  const reports = reportRoots.map((root) => {
+    const pbir = normalized.get(`${root}/definition.pbir`);
+    const head = `${root}/`;
+    let visualCount = 0;
+    for (const candidate of paths) {
+      if (candidate.startsWith(head) && candidate.toLowerCase().endsWith('/visual.json')) visualCount++;
+    }
+
+    let modelRoot = null;
+    let problem = null;
+    if (pbir === undefined) {
+      problem = 'No definition.pbir, so the model this report reads is not stated.';
+    } else {
+      const reference = parseSemanticModelReference(pbir);
+      if (!reference) {
+        problem = /byConnection/i.test(pbir)
+          ? 'Connects to a published semantic model (byConnection), which is not in this folder.'
+          : 'definition.pbir names no semantic model.';
+      } else {
+        modelRoot = resolveRelative(root, reference);
+        if (!known.has(modelRoot)) {
+          problem = `Reads ${reference}, which is not in this folder.`;
+          modelRoot = null;
+        }
+      }
+    }
+
+    const report = {
+      key: keyOf(root),
+      name: baseName(root),
+      root,
+      files: definitionOf(normalized, root),
+      modelKey: modelRoot !== null ? keyOf(modelRoot) : null,
+      visualCount,
+      problem,
+    };
+    if (modelRoot !== null) modelByRoot.get(modelRoot).reports.push(report.key);
+    return report;
+  });
+
+  const byKey = (a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  return { models: models.sort(byKey), reports: reports.sort(byKey) };
+}
+
+/**
  * Say which report was chosen when the folder held more than one.
  *
  * A Fabric workspace synced to git puts every item in one repository, so a folder with
@@ -226,7 +318,7 @@ export function describeChoice(partition) {
   return `This folder holds ${pairs.length} reports. Showing ${shown} `
     + `(${pairs[0].visualCount} visual${pairs[0].visualCount === 1 ? '' : 's'})`
     + `${others ? `; also found ${others}` : ''}. `
-    + 'Point at one report’s folder to choose another.';
+    + 'Point at one report’s folder to choose another, or pass --all for every report.';
 }
 
 /**

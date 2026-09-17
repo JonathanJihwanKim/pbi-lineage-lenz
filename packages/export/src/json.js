@@ -8,7 +8,7 @@
  * `version` travels with it so a consumer can tell whether the shape changed under them.
  */
 
-import { VIEWER_MODEL_VERSION } from '@pbi-lineage-lenz/viewer';
+import { VIEWER_MODEL_VERSION, buildIndex, describeReferences, bindingKeyOf } from '@pbi-lineage-lenz/viewer';
 
 /**
  * Serialise a viewer model.
@@ -20,6 +20,24 @@ import { VIEWER_MODEL_VERSION } from '@pbi-lineage-lenz/viewer';
  */
 export function toJson(model, { pretty = true } = {}) {
   const payload = { ...model, version: model?.version ?? VIEWER_MODEL_VERSION };
+
+  // The payload keeps a measure's reference chain as refs, because the handoff file carries
+  // every expression once already. A file somebody reads or loads elsewhere has no index to
+  // resolve them with, so the chain goes out whole: each hidden measure's DAX in place.
+  if (Array.isArray(model?.measures)) {
+    const index = buildIndex(model);
+    payload.measures = model.measures.map((measure) => ({
+      ...measure,
+      references: describeReferences(measure, index),
+    }));
+  }
+  // Binding keys are derived in the payload; a file read elsewhere gets them written out.
+  if (Array.isArray(model?.visuals)) {
+    payload.visuals = model.visuals.map((visual) => ({
+      ...visual,
+      fields: (visual.fields || []).map((field) => ({ bindingKey: bindingKeyOf(visual, field), ...field })),
+    }));
+  }
   return `${JSON.stringify(payload, replacer, pretty ? 2 : 0)}\n`;
 }
 

@@ -6,9 +6,11 @@
  */
 
 export {
-  toViewerModel, buildIndex, traceMeasure, parseRef, refs,
+  toViewerModel, buildIndex, traceMeasure, traceColumn, parseRef, refs, keys, bindingKeyOf,
+  expandReferences, describeReferences, REFERENCE_LIMITS, dependencyLookup, resolveDependency,
   VIEWER_MODEL_VERSION, TABLE_KIND,
 } from './viewerModel.js';
+export { resolveTarget, impactInModel, reverseImpact, columnUsage } from './impact.js';
 export { mountViewer } from './viewer.js';
 export { NameState, nameToggle, bindToggleShortcut, columnName, physicalPath, VOCAB } from './names.js';
 export { sourceMapLens, confidenceBadge, confidenceBar } from './sourceMap.js';

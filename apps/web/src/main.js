@@ -245,7 +245,7 @@ async function loadFolder() {
       modelName: partition.modelName || picked.name,
       reportName: partition.reportName,
       projectPath: picked.name,
-    }), { source: picked.name });
+    }), { source: picked.name, note: describeChoice(partition) });
   } catch (error) {
     console.error(error);
     showError('That folder could not be read', error.message);

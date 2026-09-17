@@ -1,5 +1,109 @@
 # Changelog
 
+## 2.0.0 — the other direction, a whole workspace, and a gate you can switch on today
+
+Every change here answers a question somebody had to write their own script for, running
+this tool over a real Fabric workspace of fourteen reports: which visuals break if I drop
+this column, which reports use this measure, what does this alias measure actually compute,
+and how do we turn the gate on over years of existing debt. Issues #3 to #10.
+
+### Breaking
+
+- **Viewer payload version 3.** Additive for anyone reading by field name — keys,
+  `sourceless`, `references`, `offersMissing` — but a consumer checking `version === 2` will
+  see 3. See [docs/output-contract.md](docs/output-contract.md).
+- **`check` fails on `broken-nameof` by default.** A field parameter offering a field the
+  model no longer contains was dropped silently; it is now a broken reference, and gated
+  like one. A repository that has some can record them with `--write-baseline` first.
+- **`resolveVisibility()` keys by page and visual id** (`visibilityKey()`), not visual id
+  alone.
+
+### What breaks if I drop this column? (#3)
+
+`impact` starts from the name a data engineer knows — `dbo.orders.order_count`,
+`orders.*`, or a model column or measure — and returns every measure that reads it,
+following measure-to-measure references with hop count and path, then every visual those
+reach, located on its page and grouped by report. `--fail-if-used` exits 1 for a warehouse
+repository's CI; a name that matches nothing exits 2, so a typo never passes as "unused".
+`docs` gains a *Used by* column per model column, from the same walk.
+
+### A flat export (#4)
+
+`docs --format csv` and `--format ndjson`: one row per field a visual reaches, per physical
+column behind it, with the physical name in parts and a documented, versioned column
+contract. Rows that reach no physical column are kept with a reason, and measures nothing
+reaches appear as `unbound`, so a count over the file agrees with the documentation.
+Written a row at a time.
+
+### Keys that are unique across a workspace (#5)
+
+PBIR visual ids are unique within a page of one report and nowhere else. Reports, pages,
+visuals and bindings now carry `reportKey`, `pageKey`, `visualKey` and `bindingKey`, built
+from folder paths and PBIR ids — stable across runs and across a page rename. Two places
+inside the tool made the same mistake and are fixed: `diff` keyed visuals by id alone, so a
+visual added on one page could hide one removed from another; and bookmark visibility did
+the same across pages.
+
+### Why a column has no source (#6)
+
+Every column carries `sourceless`: `field-parameter`, `calculation-group`,
+`calculated-column`, `computed-in-m`, or `unresolved` — and measures `no-column-reference`.
+Only `unresolved` is a gap. The markdown names the reason in place of a blank, and lists the
+unresolved columns by name under the coverage summary. A new `unresolved` check rule reports
+exactly those, and never fails by default.
+
+### Alias measures, read through (#7)
+
+A measure whose body is `[_Some Hidden Measure]` now carries its reference chain: every
+measure and calculated column below it, breadth-first, with DAX and a hidden flag, capped in
+depth and size and safe against cycles. In `docs` it is a collapsible chain under the
+measure; in the measures lens, a *Resolves through* list. Hidden measures are read, not
+unhidden.
+
+Calculated columns were missing from the lineage graph altogether, so a measure reading one
+lost the dependency, and a trace stopped at a column with no source. They are nodes now, and
+traces continue through them to the columns their DAX reads.
+
+### Page maps (#8)
+
+`docs --page-maps` adds a small SVG of each visual's page, visual highlighted, as a `data:`
+URI — in JSON, in the flat export, and in markdown. Built for Power BI's image URL column: no
+`#`, single-quoted attributes, scaled to the page's own size, and capped in length.
+
+### A gate you can switch on today (#9)
+
+`check --write-baseline <file>` records current findings as known debt; `--baseline <file>`
+fails only on new ones and prints the suppressed count on every run. A recorded finding that
+has since been fixed fails until removed, and `--update-baseline` removes it — the file can
+only shrink. Findings are matched on stable keys, so moving a visual does not resurrect one.
+
+The `broken-nameof` rule is new with it: `docs/documentation.md` had promised that `check`
+reports field parameter entries naming a deleted field, and nothing did.
+
+### A whole workspace (#10)
+
+`--all` on `docs`, `check` and `impact` analyses every report in the folder against the
+model its `definition.pbir` names, and parses each shared model once. `docs --all` writes an
+index — every pairing, reports whose model is not in the folder or that connect
+`byConnection`, and for each shared model which reports reach each measure — plus one
+document per report. One unreadable report is listed and skipped, not fatal. Across a
+workspace, a measure is `unused` only if no report over its model reaches it.
+
+### Also
+
+- **References spelled in a different case now resolve.** DAX is case-insensitive and the
+  forward trace was not: a measure called as `[Orders with Target Not Met]` but defined as
+  `Orders with Target not Met` was dropped, with every column underneath it — from the
+  measures lens, from `unused` (which called the callee unused), and from anything built on
+  the trace. Found by checking the flat export and reverse impact against each other; they
+  now share one resolver, and a test holds them to the same answer.
+- The web app now shows which report it opened when a folder holds several; it always meant
+  to.
+- `samples/contoso` gains an alias measure over three levels of hidden measures and a thin
+  second report over the same model, reusing a visual id — so every claim above is asserted
+  on every commit.
+- 596 tests, up from 533.
+
 ## 1.1.1 — `pbi-lineage-lenz` only
 
 No behaviour change. The npm package page described a tool with no calculation groups, no

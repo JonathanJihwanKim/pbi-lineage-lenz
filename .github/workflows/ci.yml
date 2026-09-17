@@ -78,8 +78,14 @@ jobs:
           npx pbi-lineage-lenz check   "$GITHUB_WORKSPACE/samples/contoso"
           npx pbi-lineage-lenz handoff "$GITHUB_WORKSPACE/samples/contoso" -o handoff.html
           npx pbi-lineage-lenz docs    "$GITHUB_WORKSPACE/samples/contoso" --format md -o MODEL.md
+          npx pbi-lineage-lenz docs    "$GITHUB_WORKSPACE/samples/contoso" --all --format csv -o lineage.csv
+          npx pbi-lineage-lenz impact  "$GITHUB_WORKSPACE/samples/contoso" --all --column dbo.sales.OrderKey
+          npx pbi-lineage-lenz check   "$GITHUB_WORKSPACE/samples/contoso" --all --write-baseline baseline.json
+          npx pbi-lineage-lenz check   "$GITHUB_WORKSPACE/samples/contoso" --all --baseline baseline.json
           test -s handoff.html
           test -s MODEL.md
+          test -s lineage.csv
+          test -s baseline.json
 
   # The sample is committed so contributors can reproduce results. It came from a real
   # Fabric workspace, so a sanitisation slip would publish a hostname or a workspace GUID.

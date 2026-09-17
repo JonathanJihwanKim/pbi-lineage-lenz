@@ -10,6 +10,7 @@ import { physicalPath } from './names.js';
 import { buildTraceGraph, graphView } from './graph.js';
 import { confidenceBadge } from './sourceMap.js';
 import { locatorCard } from './locator.js';
+import { traceMeasure, describeReferences } from './viewerModel.js';
 
 const DAX_KEYWORDS = new Set([
   'VAR', 'RETURN', 'EVALUATE', 'DEFINE', 'MEASURE', 'ORDER', 'BY', 'START', 'AT',
@@ -183,7 +184,7 @@ export function catalogLens({ model, index, names, linkFor, onOpenVisual }) {
       return;
     }
 
-    const { columns, unresolved } = traceColumns(measure.ref, model, index);
+    const { columns, unresolved } = traceMeasure(measure.ref, model, index);
     const graph = buildTraceGraph(measure.ref, model, index);
     currentGraph = graphView(graph, { names, onSelect: () => {} });
     graphPanel.style.display = '';
@@ -214,6 +215,10 @@ export function catalogLens({ model, index, names, linkFor, onOpenVisual }) {
       // exactly why it has to be said here — someone editing this measure and checking
       // that visual would otherwise conclude their change had no effect.
       ...calculationGroupNote(measure, model),
+
+      // An alias measure's DAX is one line naming a hidden measure. The logic is below it,
+      // in measures the field list deliberately hides, so it is read through here instead.
+      ...referenceChain(measure, index),
 
       h('div.label', { style: { margin: '16px 0 7px' } },
         `physical columns (${columns.length})`),
@@ -286,33 +291,31 @@ function calculationGroupNote(measure, model) {
     + 'expression wrapped in the selected calculation item — not this expression.')];
 }
 
-/** Columns a measure reads, split by whether their physical origin is known. */
-function traceColumns(measureRef, model, index) {
-  const seen = new Set();
-  const refs = new Set();
+/**
+ * The measures and calculated columns this measure resolves through, each with its DAX.
+ * Hidden members are marked as implementation detail rather than as things to go and find
+ * in the field list, where they are not.
+ */
+function referenceChain(measure, index) {
+  const chain = describeReferences(measure, index);
+  if (chain.length === 0) return [];
 
-  const walk = (ref, depth) => {
-    if (seen.has(ref) || depth > 16) return;
-    seen.add(ref);
-    const measure = index.byRef.get(ref);
-    if (!measure || measure.kind !== 'measures') return;
-
-    for (const columnRef of measure.dependsOn.columns) refs.add(`column:${columnRef}`);
-    for (const childName of measure.dependsOn.measures) {
-      const direct = `measure:${childName}`;
-      if (index.byRef.has(direct)) { walk(direct, depth + 1); continue; }
-      const match = model.measures.find((m) => m.name === childName.replace(/^.*\[|\]$/g, ''));
-      if (match) walk(match.ref, depth + 1);
-    }
-  };
-  walk(measureRef, 0);
-
-  const columns = [];
-  const unresolved = [];
-  for (const ref of refs) {
-    const column = index.byRef.get(ref);
-    if (!column) continue;
-    (column.physicalPath ? columns : unresolved).push(column);
-  }
-  return { columns, unresolved };
+  const hidden = chain.filter((entry) => entry.isHidden).length;
+  return [
+    h('div.label', { style: { margin: '16px 0 7px' } },
+      `resolves through (${chain.length}${hidden > 0 ? `, ${hidden} hidden` : ''})`),
+    h('div.ref-chain', chain.map((entry) => h('div.ref-chain-item', {
+      style: { marginLeft: `${(entry.depth - 1) * 16}px` },
+      class: entry.isHidden ? 'is-hidden' : '',
+    },
+      h('div.ref-chain-name',
+        h('span.n-model', `${entry.table}[${entry.name}]`),
+        entry.kind === 'column' ? h('span.ref-chain-tag', 'calculated column') : null,
+        entry.isHidden ? h('span.ref-chain-tag', 'hidden') : null),
+      entry.expression ? h('pre.code.ref-chain-dax', { html: highlightDax(entry.expression) }) : null))),
+    measure.referencesTruncated
+      ? h('div', { style: { fontSize: '12px', marginTop: '6px', color: 'var(--ink-3)' } },
+        'The chain continues past the depth or size limit.')
+      : null,
+  ];
 }

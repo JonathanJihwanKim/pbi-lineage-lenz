@@ -209,4 +209,42 @@ describe('toMarkdown', () => {
     expect(markdown).toContain('**5** belong to field parameters and calculation groups');
     expect(markdown).toContain('**24 of 25 columns**');
   });
+
+  it('names why a column has no source, and lists only real gaps as unresolved', () => {
+    const markdown = toMarkdown(model({
+      columns: [
+        { ref: 'column:Sales[Amount]', table: 'Sales', name: 'Amount', physicalPath: 'mydb.dbo.fact_sales.sale_amount', confidence: 'exact', sourceless: null },
+        { ref: 'column:Sales[Tier]', table: 'Sales', name: 'Tier', physicalPath: null, confidence: 'exact', sourceless: 'calculated-column' },
+        { ref: 'column:Sales[Note]', table: 'Sales', name: 'Note', physicalPath: null, confidence: 'unknown', sourceless: 'unresolved', reason: 'No physical table could be resolved.' },
+      ],
+    }));
+    expect(markdown).toContain('| Tier | _calculated column (DAX)_ |');
+    expect(markdown).toContain('### 1 column unresolved');
+    expect(markdown).toContain('| Sales[Note] | No physical table could be resolved. |');
+    expect(markdown).not.toContain('| Sales[Tier] | ');
+  });
+
+  it('says which measures and visuals use a column', () => {
+    const markdown = toMarkdown(model({
+      columns: [{ ref: 'column:Sales[Amount]', table: 'Sales', name: 'Amount', physicalPath: 'x.y', confidence: 'exact', sourceless: null }],
+      measures: [
+        { ref: 'measure:Sales[Total]', table: 'Sales', name: 'Total', expression: 'SUM(Sales[Amount])', usedByVisuals: [], dependsOn: { measures: [], columns: ['Sales[Amount]'] } },
+        { ref: 'measure:Sales[Alias]', table: 'Sales', name: 'Alias', expression: '[Total]', usedByVisuals: ['visual:p1/v1'], dependsOn: { measures: ['Sales[Total]'], columns: [] } },
+      ],
+      visuals: [{ ref: 'visual:p1/v1', id: 'v1', page: 'p1', fields: [{ kind: 'measure', ref: 'measure:Sales[Alias]' }] }],
+    }));
+    expect(markdown).toContain('| Amount | x.y |  | ● exact | 2 measures · 1 visual on 1 page |');
+  });
+
+  it('expands an alias measure through the hidden measures below it', () => {
+    const markdown = toMarkdown(model({
+      measures: [
+        { ref: 'measure:Sales[Total]', table: 'Sales', name: 'Total', expression: '[_Total]', usedByVisuals: [], references: [{ ref: 'measure:Sales[_Total]', depth: 1 }] },
+        { ref: 'measure:Sales[_Total]', table: 'Sales', name: '_Total', expression: 'SUM ( Sales[Amount] )', isHidden: true, usedByVisuals: [], references: [] },
+      ],
+    }));
+    expect(markdown).toContain('Resolves through 1 reference (1 hidden)');
+    expect(markdown).toContain('- `Sales[_Total]` — measure, hidden');
+    expect(markdown).toContain('  SUM ( Sales[Amount] )');
+  });
 });

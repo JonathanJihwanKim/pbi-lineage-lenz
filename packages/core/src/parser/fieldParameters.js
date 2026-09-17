@@ -87,6 +87,24 @@ function fieldParameterSource(table) {
  *   longer exists is a broken reference, and inventing a table for it would hide that.
  */
 export function resolveFieldParameters(model) {
+  return resolveNameOfTargets(model).resolved;
+}
+
+/**
+ * The `NAMEOF` targets a field parameter names that the model does not contain.
+ *
+ * resolveFieldParameters() drops these, correctly — inventing a field would hide the gap.
+ * But dropped is not the same as reported: a slicer entry pointing at a deleted measure
+ * renders nothing and says nothing, and the documentation promised `check` would say so.
+ *
+ * @param {{tables: Array<object>}} model - Parsed TMDL model.
+ * @returns {Map<string, Array<{table: string|null, name: string}>>} Keyed by parameter table.
+ */
+export function findMissingNameOfTargets(model) {
+  return resolveNameOfTargets(model).missing;
+}
+
+function resolveNameOfTargets(model) {
   // Keyed case-insensitively and carrying the model's own spelling, because DAX is
   // case-insensitive and authors do not stay consistent: this model's parameter writes
   // `NAMEOF('Measure'[Orders with Target Not Met])` for a measure defined as
@@ -105,11 +123,13 @@ export function resolveFieldParameters(model) {
   }
 
   const resolved = new Map();
+  const missing = new Map();
   for (const table of model?.tables || []) {
     const source = fieldParameterSource(table);
     if (!source) continue;
 
     const entries = [];
+    const gaps = [];
     for (const target of parseNameOfTargets(source)) {
       // A measure resolves by name whether or not a table is written against it, so it
       // is tried first either way; a bare `NAMEOF([X])` can only ever be a measure.
@@ -118,14 +138,16 @@ export function resolveFieldParameters(model) {
         entries.push({ type: 'measure', table: measure.table, name: measure.name });
         continue;
       }
-      if (!target.table) continue;
+      if (!target.table) { gaps.push(target); continue; }
       const column = columnOwners.get(`${target.table.toLowerCase()}|${target.name.toLowerCase()}`);
       if (column) entries.push({ type: 'column', table: column.table, name: column.name });
+      else gaps.push(target);
     }
 
     if (entries.length > 0) resolved.set(table.name, entries);
+    if (gaps.length > 0) missing.set(table.name, gaps);
   }
-  return resolved;
+  return { resolved, missing };
 }
 
 /**

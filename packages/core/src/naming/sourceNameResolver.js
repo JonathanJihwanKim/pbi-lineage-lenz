@@ -67,6 +67,44 @@ export const ORIGIN = Object.freeze({
 });
 
 /**
+ * Why a column has no physical source — or null when it has one.
+ *
+ * A blank physical path reads as a failure, and most of them are not: a field parameter's
+ * columns, a calculation group's, a DAX calculated column and a column added in Power
+ * Query are *by definition* sourceless. Only `unresolved` is a gap in the tracing, and it
+ * is the only value that counts against coverage. Carried on every column so the
+ * distinction survives past the summary line — into a flat export, a slicer, a CI rule.
+ */
+export const SOURCELESS = Object.freeze({
+  FIELD_PARAMETER: 'field-parameter',
+  CALCULATION_GROUP: 'calculation-group',
+  CALCULATED_COLUMN: 'calculated-column',
+  COMPUTED_IN_M: 'computed-in-m',
+  /** A measure that reads no column at all: a constant, a `COUNTROWS`, a pure composition. */
+  NO_COLUMN_REFERENCE: 'no-column-reference',
+  UNRESOLVED: 'unresolved',
+});
+
+/**
+ * The sourceless reason for a resolved column.
+ * @param {object} column - A resolved column (`origin` set).
+ * @param {'fieldParameter'|'calculationGroup'|null} [modelDefined] - The owning table's kind.
+ * @returns {string|null}
+ */
+export function sourcelessReason(column, modelDefined = null) {
+  switch (column?.origin) {
+    case ORIGIN.SOURCE: return null;
+    case ORIGIN.COMPUTED_DAX: return SOURCELESS.CALCULATED_COLUMN;
+    case ORIGIN.COMPUTED_PQ: return SOURCELESS.COMPUTED_IN_M;
+    case ORIGIN.MODEL_DEFINED:
+      return modelDefined === 'calculationGroup'
+        ? SOURCELESS.CALCULATION_GROUP
+        : SOURCELESS.FIELD_PARAMETER;
+    default: return SOURCELESS.UNRESOLVED;
+  }
+}
+
+/**
  * Parse a SQL SELECT list into output columns.
  *
  * @param {string} sql
@@ -259,6 +297,11 @@ export function resolveSourceNames(parsedModel) {
   }
 
   linkDerivedColumns(columns, derived, calculatedDax);
+
+  // After linking, which can turn an unresolved column into a sourced one.
+  for (const col of columns.values()) {
+    col.sourceless = sourcelessReason(col, tables.get(col.modelTable)?.modelDefined ?? null);
+  }
 
   return { tables, columns, stats: summarize(columns) };
 }

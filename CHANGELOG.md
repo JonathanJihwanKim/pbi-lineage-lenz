@@ -21,9 +21,16 @@ pbi-lineage-lenz docs ./MyReport -o MODEL.md
 - **The artefact is installed into an empty project and run before it is published**, on
   every release and on every pull request. A tarball that lost its bundled packages still
   builds and still looks right; only running it finds out.
-- **`esbuild` moved to `^0.25.0`**, clearing three moderate advisories that showed up on
-  every install. It is used as a library here, never as a dev server, so the advisory could
-  not bite — but nobody should have to work that out from an audit warning.
+- **The release installs nothing.** The viewer is bundled when the tarball is built rather
+  than on the machine that installs it, so the artefact has no dependencies at all — the
+  install is an extract, with nothing to download and no scripts to run. It also fixes a
+  real failure: a package that carries bundled dependencies *and* installs one of its own
+  breaks under `npm i -g`, leaving esbuild half-written. A project install does not
+  reproduce it, so CI caught what a laptop had not. Both CI and the release job now install
+  globally, the way the README says to.
+- **`esbuild` moved to `^0.25.0`** in the workspace, clearing three moderate advisories that
+  showed up on every install. It is used as a library here, never as a dev server, so the
+  advisory could not bite — but nobody should have to work that out from an audit warning.
 - **The handoff workflow builds the tool from the code under review** instead of installing
   a published copy, so a pull request that breaks the CLI no longer passes its own workflow.
 

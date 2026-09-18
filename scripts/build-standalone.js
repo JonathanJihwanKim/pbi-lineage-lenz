@@ -15,9 +15,16 @@
  *
  * `bundleDependencies` is what makes that shippable: npm strips `node_modules` from a pack
  * *except* for the dependencies named there, which is exactly the "vendor my own packages"
- * case. The four internal packages travel inside the tarball; only `esbuild` is fetched from
- * the registry, which is an anonymous read and needs no account. It cannot be vendored
- * anyway — it installs a platform-specific native binary.
+ * case. All four internal packages travel inside the tarball.
+ *
+ * **Why the viewer is built here rather than on the user's machine.** esbuild was the one
+ * thing left to fetch, and a package that carries bundled dependencies *and* installs one of
+ * its own breaks under `npm i -g`: npm leaves esbuild half-written and its postinstall dies
+ * on a missing `install.js`. A local project install does not reproduce it, so CI found it
+ * and a laptop did not. Building the viewer at this point removes the dependency rather than
+ * working around the bug — the artefact now installs with nothing to fetch and nothing to
+ * run, which is the only kind of install that cannot half-fail. It was always the wrong
+ * moment to run a bundler: the output is identical on every machine.
  *
  * Usage: `node scripts/build-standalone.js [--out <dir>]`. Prints the tarball path on the
  * last line of stdout, for CI to upload.
@@ -92,6 +99,22 @@ for (const file of ['README.md', 'LICENSE']) {
   if (existsSync(join(ROOT, file))) cpSync(join(ROOT, file), join(STAGE, file));
 }
 
+// Build the viewer once, here, and write it where the vendored handoff package will look
+// for it. This is what makes the artefact dependency-free: without it the tarball would
+// need esbuild from the registry, and a global install of a package that carries bundled
+// dependencies *and* installs one of its own leaves esbuild half-written and its postinstall
+// failing — which is how this was found, in CI, after a local project install had passed.
+const { bundleViewerScript } = await import('@pbi-lineage-lenz/handoff/assets');
+const prebuilt = join(STAGE, 'node_modules', '@pbi-lineage-lenz', 'handoff', 'src', 'prebuilt');
+mkdirSync(prebuilt, { recursive: true });
+writeFileSync(join(prebuilt, 'viewer.js'), await bundleViewerScript());
+
+// Nothing is left to fetch, so the vendored manifest should not claim otherwise.
+const handoffManifest = join(STAGE, 'node_modules', '@pbi-lineage-lenz', 'handoff', 'package.json');
+const vendored = JSON.parse(readFileSync(handoffManifest, 'utf-8'));
+delete vendored.dependencies.esbuild;
+writeFileSync(handoffManifest, `${JSON.stringify(vendored, null, 2)}\n`);
+
 writeFileSync(join(STAGE, 'package.json'), `${JSON.stringify({
   name: cli.name,
   version: cli.version,
@@ -104,11 +127,8 @@ writeFileSync(join(STAGE, 'package.json'), `${JSON.stringify({
   // npm bundles a dependency, not an arbitrary folder, and silently ignores a bundled name
   // it cannot find in `dependencies`. Pinned exactly, so that if the bundled copy ever went
   // missing npm would fail trying to fetch a version the registry does not have, rather than
-  // quietly installing an older one.
-  dependencies: {
-    ...Object.fromEntries(bundled.map((name) => [name, cli.version])),
-    esbuild: manifest('handoff').dependencies.esbuild,
-  },
+  // quietly installing an older one. Nothing else is listed: the artefact fetches nothing.
+  dependencies: Object.fromEntries(bundled.map((name) => [name, cli.version])),
   bundleDependencies: bundled,
   keywords: cli.keywords,
   license: cli.license,
@@ -129,6 +149,7 @@ const included = new Set(planned.files.map((file) => file.path.replace(/\\/g, '/
 const required = [
   'node_modules/@pbi-lineage-lenz/viewer/src/viewer.css',
   'node_modules/@pbi-lineage-lenz/handoff/src/entry.js',
+  'node_modules/@pbi-lineage-lenz/handoff/src/prebuilt/viewer.js',
   'src/bin.js',
 ];
 const missing = required.filter((path) => !included.has(path));

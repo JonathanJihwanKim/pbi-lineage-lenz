@@ -286,8 +286,8 @@ npm i -g https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/latest/d
 
 Installed from the GitHub release rather than from npm, which needs no account and no
 sign-in — `releases/latest/download` always resolves to the newest version. To pin one,
-use the versioned file on that release instead. Node 18 or newer; everything the tool
-needs travels inside the tarball apart from `esbuild`, which npm fetches for you.
+use the versioned file on that release instead. Node 18 or newer, and nothing else: the
+tarball carries everything, so the install downloads no dependencies and runs no scripts.
 
 > **On npm, this package stops at 1.1.1.** The 2.x releases live here, on GitHub. The npm
 > packages are still built on every release and will be published again if that account

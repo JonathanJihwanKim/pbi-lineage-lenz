@@ -51,17 +51,18 @@ jobs:
           echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
           echo "Built $tarball"
 
-      - name: Install it into an empty project and use it
+      # Globally, the way the README says to install it — a project install behaves
+      # differently and has already hidden one broken artefact.
+      - name: Install it the way users do, and use it
         working-directory: ${{ runner.temp }}
         run: |
+          npm i -g "${{ steps.build.outputs.tarball }}"
           mkdir -p verify && cd verify
-          npm init -y > /dev/null
-          npm install "${{ steps.build.outputs.tarball }}"
-          npx pbi-lineage-lenz check   "$GITHUB_WORKSPACE/samples/contoso"
-          npx pbi-lineage-lenz docs    "$GITHUB_WORKSPACE/samples/contoso" --format md -o MODEL.md
-          npx pbi-lineage-lenz docs    "$GITHUB_WORKSPACE/samples/contoso" --all --format csv -o lineage.csv
-          npx pbi-lineage-lenz handoff "$GITHUB_WORKSPACE/samples/contoso" -o handoff.html
-          npx pbi-lineage-lenz impact  "$GITHUB_WORKSPACE/samples/contoso" --all --column sales.NetPrice
+          pbi-lineage-lenz check   "$GITHUB_WORKSPACE/samples/contoso"
+          pbi-lineage-lenz docs    "$GITHUB_WORKSPACE/samples/contoso" --format md -o MODEL.md
+          pbi-lineage-lenz docs    "$GITHUB_WORKSPACE/samples/contoso" --all --format csv -o lineage.csv
+          pbi-lineage-lenz handoff "$GITHUB_WORKSPACE/samples/contoso" -o handoff.html
+          pbi-lineage-lenz impact  "$GITHUB_WORKSPACE/samples/contoso" --all --column sales.NetPrice
           test -s MODEL.md
           test -s lineage.csv
           # The handoff file embeds a fresh build of the viewer. A few hundred bytes would

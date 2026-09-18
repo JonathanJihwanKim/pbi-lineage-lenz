@@ -7,7 +7,7 @@
  * bundler invocation, described once.
  */
 
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -17,6 +17,15 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 export const ENTRY = join(HERE, 'entry.js');
 /** Stylesheet inlined into every handoff file. */
 export const VIEWER_CSS = join(HERE, '../../viewer/src/viewer.css');
+/**
+ * A bundle built ahead of time, written here by `scripts/build-standalone.js`.
+ *
+ * Present only in the released tarball, never in the repository. It exists so the shipped
+ * tool needs no bundler at runtime and therefore no dependencies at all: install becomes an
+ * extract, which cannot half-fail. Running esbuild on a user's machine to produce a file
+ * that is identical every time was always work done at the wrong moment.
+ */
+export const PREBUILT = join(HERE, 'prebuilt', 'viewer.js');
 
 /** @returns {string} */
 export function readViewerCss() {
@@ -35,6 +44,10 @@ export function readViewerCss() {
  * @returns {Promise<string|{code: string, inputs: string[]}>}
  */
 export async function bundleViewerScript({ withInputs = false } = {}) {
+  // A watching build asks for the input list so it can invalidate on any of them, and that
+  // only makes sense where the sources are present — in the repository, where esbuild is too.
+  if (!withInputs && existsSync(PREBUILT)) return readFileSync(PREBUILT, 'utf-8');
+
   const esbuild = await import('esbuild');
   const result = await esbuild.build({
     entryPoints: [ENTRY],

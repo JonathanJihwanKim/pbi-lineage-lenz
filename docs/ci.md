@@ -3,7 +3,8 @@
 [← back to the README](../README.md)
 
 ```bash
-npx pbi-lineage-lenz check ./MyReport
+npm i -g https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/latest/download/pbi-lineage-lenz.tgz
+pbi-lineage-lenz check ./MyReport
 ```
 
 Exits `1` on a broken reference. Reports everything else and exits `0`.
@@ -84,7 +85,7 @@ and `--fail-on unresolved`, it fails only when the list grows.
 Reports the traced percentage. Only fails with an explicit threshold:
 
 ```bash
-npx pbi-lineage-lenz check ./MyReport --min-coverage 70
+pbi-lineage-lenz check ./MyReport --min-coverage 70
 ```
 
 Coverage counts only columns that read from a source. Field parameters, calculation groups
@@ -101,7 +102,7 @@ A hidden visual no bookmark reveals. Distinct from merely hidden: on one real re
 ## Choosing what fails
 
 ```bash
-npx pbi-lineage-lenz check ./MyReport --fail-on broken,dangling-visuals
+pbi-lineage-lenz check ./MyReport --fail-on broken,dangling-visuals
 ```
 
 Any comma-separated subset of the rule names. `--quiet` prints only problems, which is what
@@ -118,11 +119,11 @@ A baseline lets the gate go on today:
 
 ```bash
 # once, when adopting
-npx pbi-lineage-lenz check ./reports --all --write-baseline .lenz-baseline.json
+pbi-lineage-lenz check ./reports --all --write-baseline .lenz-baseline.json
 git add .lenz-baseline.json
 
 # in CI, from then on
-npx pbi-lineage-lenz check ./reports --all --baseline .lenz-baseline.json
+pbi-lineage-lenz check ./reports --all --baseline .lenz-baseline.json
 ```
 
 - **Only findings not in the file fail.** Existing debt is acknowledged, not accepted
@@ -143,7 +144,7 @@ format is in [output-contract.md](output-contract.md#baseline-files).
 ## A whole workspace
 
 ```bash
-npx pbi-lineage-lenz check ./workspace --all
+pbi-lineage-lenz check ./workspace --all
 ```
 
 Every report, against the model it names. A finding about a model — a broken reference, a
@@ -155,7 +156,7 @@ with a model are listed before the findings.
 ## Before dropping a column
 
 ```bash
-npx pbi-lineage-lenz impact ./reports --all --column order_agg_rpt.order_count --fail-if-used
+pbi-lineage-lenz impact ./reports --all --column order_agg_rpt.order_count --fail-if-used
 ```
 
 For a warehouse repository's CI: a change that drops a column fails its own build while a
@@ -163,6 +164,21 @@ report still reads it. `impact` matches the physical name on its last parts, fol
 measure-to-measure reference, and exits `1` with `--fail-if-used` when anything reaches the
 column — `2` if nothing by that name exists, so a typo does not pass as "unused". Without
 `--fail-if-used` it prints the measures, hop by hop, and the visuals, page by page.
+
+## Installing it in CI
+
+```yaml
+- uses: actions/setup-node@v4
+  with:
+    node-version: 22
+- run: npm i -g https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/latest/download/pbi-lineage-lenz.tgz
+- run: pbi-lineage-lenz check .
+```
+
+The tool installs from its GitHub release rather than from npm — no registry account is
+involved on either side, and `releases/latest/download` always resolves to the newest
+version. Pin a build by using the versioned filename from a specific release instead, which
+is what a gate you do not want moving under you should do.
 
 ## A ready-made workflow
 
@@ -173,7 +189,7 @@ the model.
 ## Keeping the documentation in step
 
 ```yaml
-- run: npx --yes pbi-lineage-lenz docs . -o MODEL.md
+- run: pbi-lineage-lenz docs . -o MODEL.md
 # Fails if the committed file no longer matches the model. The generated file carries a
 # date stamp, so `-I` ignores that one line — otherwise this would fail every midnight
 # and be switched off within a week.
@@ -186,7 +202,7 @@ actually fix. See [documentation.md](documentation.md).
 ## What changed, not which lines moved
 
 ```bash
-npx pbi-lineage-lenz diff main..HEAD
+pbi-lineage-lenz diff main..HEAD
 ```
 
 Reads both revisions through the parser and reports model-level changes — a measure's

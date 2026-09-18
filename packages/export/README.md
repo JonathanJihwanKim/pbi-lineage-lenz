@@ -24,7 +24,7 @@ anything.
 Most people want the CLI rather than this package:
 
 ```bash
-npx pbi-lineage-lenz docs ./MyReport --format md -o MODEL.md
+pbi-lineage-lenz docs ./MyReport --format md -o MODEL.md
 ```
 
 MIT © Jihwan Kim

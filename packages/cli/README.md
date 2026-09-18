@@ -11,7 +11,7 @@ the far end.
 a real model in your browser, nothing to download.
 
 ```bash
-npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
+pbi-lineage-lenz handoff ./MyReport -o handoff.html
 ```
 
 ## What it answers
@@ -83,8 +83,8 @@ looking for 67 things that were never lost.
 ## In CI
 
 ```yaml
-- run: npx --yes pbi-lineage-lenz check .
-- run: npx --yes pbi-lineage-lenz handoff . -o handoff.html
+- run: pbi-lineage-lenz check .
+- run: pbi-lineage-lenz handoff . -o handoff.html
 - uses: actions/upload-artifact@v4
   with: { name: handoff, path: handoff.html }
 ```

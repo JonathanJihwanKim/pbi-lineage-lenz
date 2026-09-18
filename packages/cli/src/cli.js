@@ -42,7 +42,7 @@ function topUsage() {
 ${style.bold('pbi-lineage-lenz')} — one lens on your Power BI model, for the BI developer and the data engineer.
 
 ${style.bold('Usage')}
-  npx pbi-lineage-lenz <command> [path] [options]
+  pbi-lineage-lenz <command> [path] [options]
 
 ${style.bold('Commands')}
 ${commands}
@@ -51,11 +51,11 @@ ${style.bold('Options')}
 ${options}
 
 ${style.bold('Examples')}
-  ${style.dim('npx pbi-lineage-lenz handoff ./MyReport -o handoff.html')}
-  ${style.dim('npx pbi-lineage-lenz check ./MyReport --min-coverage 70')}
-  ${style.dim('npx pbi-lineage-lenz docs ./MyReport -o MODEL.md')}
-  ${style.dim('npx pbi-lineage-lenz impact ./workspace --all --column order_agg_rpt.order_count')}
-  ${style.dim('npx pbi-lineage-lenz diff main..HEAD')}
+  ${style.dim('pbi-lineage-lenz handoff ./MyReport -o handoff.html')}
+  ${style.dim('pbi-lineage-lenz check ./MyReport --min-coverage 70')}
+  ${style.dim('pbi-lineage-lenz docs ./MyReport -o MODEL.md')}
+  ${style.dim('pbi-lineage-lenz impact ./workspace --all --column order_agg_rpt.order_count')}
+  ${style.dim('pbi-lineage-lenz diff main..HEAD')}
 `;
 }
 

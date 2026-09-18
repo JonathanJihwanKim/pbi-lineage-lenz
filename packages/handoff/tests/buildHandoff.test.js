@@ -43,7 +43,13 @@ beforeAll(async () => {
 describe('self-containment', () => {
   it('references no external scripts or stylesheets', () => {
     expect(html).not.toMatch(/<script[^>]+\ssrc=/i);
-    expect(html).not.toMatch(/<link[^>]+\shref=/i);
+    expect(html).not.toMatch(/<link[^>]+\shref="(?!data:)/i);
+  });
+
+  it('declares an inert favicon so the browser asks the server for nothing', () => {
+    // Without this the browser requests /favicon.ico on its own, which is invisible on a
+    // file:// copy and a 404 in the console of anyone who hosts the file.
+    expect(html).toMatch(/<link rel="icon" href="data:,">/);
   });
 
   it('loads no remote fonts or images', () => {

@@ -87,6 +87,19 @@ jobs:
           test -s lineage.csv
           test -s baseline.json
 
+      # The five tarballs above are what npm would serve. This is what a GitHub release
+      # serves — one tarball carrying the other four inside it. Different packing, same
+      # promise, so it is checked on every pull request rather than only at tag time.
+      - name: Build the standalone tarball and use that too
+        run: |
+          tarball=$(node scripts/build-standalone.js --out "$RUNNER_TEMP/release" | tail -1)
+          mkdir -p "$RUNNER_TEMP/standalone" && cd "$RUNNER_TEMP/standalone"
+          npm init -y > /dev/null
+          npm install "$tarball"
+          npx pbi-lineage-lenz check   "$GITHUB_WORKSPACE/samples/contoso"
+          npx pbi-lineage-lenz handoff "$GITHUB_WORKSPACE/samples/contoso" -o handoff.html
+          test "$(wc -c < handoff.html)" -gt 100000
+
   # The sample is committed so contributors can reproduce results. It came from a real
   # Fabric workspace, so a sanitisation slip would publish a hostname or a workspace GUID.
   # Cheap to check, expensive to miss.

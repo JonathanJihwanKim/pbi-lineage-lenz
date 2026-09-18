@@ -12,7 +12,7 @@ keep in step. Regenerate it in CI and it is correct on every commit, or it is no
 all — and either of those is better than a wiki page that is confidently wrong.
 
 ```bash
-npx pbi-lineage-lenz docs ./MyReport -o MODEL.md
+pbi-lineage-lenz docs ./MyReport -o MODEL.md
 ```
 
 That is the whole command. The rest of this page is what comes out of it.
@@ -86,7 +86,7 @@ and see that a change to a hidden measure moves three visible ones before approv
 ## A whole workspace
 
 ```bash
-npx pbi-lineage-lenz docs ./workspace --all -o lineage/
+pbi-lineage-lenz docs ./workspace --all -o lineage/
 ```
 
 A Fabric workspace synced to git holds many reports over a few shared models, and the
@@ -211,7 +211,7 @@ real gaps, not from every blank cell.
 ## Committing it
 
 ```bash
-npx pbi-lineage-lenz docs ./MyReport -o MODEL.md
+pbi-lineage-lenz docs ./MyReport -o MODEL.md
 git add MODEL.md && git commit -m "Regenerate model documentation"
 ```
 
@@ -222,7 +222,7 @@ a column's physical source — beside the TMDL that changed it.
 ## Regenerating it in CI
 
 ```yaml
-- run: npx --yes pbi-lineage-lenz docs . -o MODEL.md
+- run: pbi-lineage-lenz docs . -o MODEL.md
 # Fails if the committed file no longer matches the model. The generated file carries a
 # date stamp, so `-I` ignores that one line — otherwise this would fail every midnight
 # and be switched off within a week.

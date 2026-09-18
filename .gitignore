@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The release artefact, rebuilt by `scripts/build-standalone.js` on every release.
+build/
 .vite/
 *.local
 .DS_Store

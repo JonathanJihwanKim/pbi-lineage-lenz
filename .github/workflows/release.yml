@@ -1,0 +1,90 @@
+# Build the installable artefact and attach it to the release for a tag.
+#
+# This is the project's distribution channel. There is no registry account behind it and no
+# secret to configure: the only credential is the `GITHUB_TOKEN` GitHub Actions mints for
+# this run, scoped to this repository. Push a `v*` tag and the release gets its tarball.
+#
+# The gate is step 4. A tarball that lost its bundled packages still builds, still uploads,
+# and still looks correct in a file listing — it fails on a user's machine, at `handoff`,
+# which is the one command that reads the viewer's source off disk at runtime. So the
+# artefact is installed into an empty directory and actually run before it is published.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, verify and attach
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Never ship an untested tag. The suite is four seconds; the embarrassment is not.
+      - run: npm test
+
+      # Two names for one file. The versioned one is what people pin in CI; the plain one
+      # is what the README can point at forever, because
+      # `releases/latest/download/pbi-lineage-lenz.tgz` always resolves to the newest
+      # release and needs no edit when the version changes.
+      - name: Build the standalone tarball
+        id: build
+        run: |
+          tarball=$(node scripts/build-standalone.js --out "$RUNNER_TEMP/release" | tail -1)
+          cp "$tarball" "$RUNNER_TEMP/release/pbi-lineage-lenz.tgz"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+          echo "Built $tarball"
+
+      - name: Install it into an empty project and use it
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir -p verify && cd verify
+          npm init -y > /dev/null
+          npm install "${{ steps.build.outputs.tarball }}"
+          npx pbi-lineage-lenz check   "$GITHUB_WORKSPACE/samples/contoso"
+          npx pbi-lineage-lenz docs    "$GITHUB_WORKSPACE/samples/contoso" --format md -o MODEL.md
+          npx pbi-lineage-lenz docs    "$GITHUB_WORKSPACE/samples/contoso" --all --format csv -o lineage.csv
+          npx pbi-lineage-lenz handoff "$GITHUB_WORKSPACE/samples/contoso" -o handoff.html
+          npx pbi-lineage-lenz impact  "$GITHUB_WORKSPACE/samples/contoso" --all --column sales.NetPrice
+          test -s MODEL.md
+          test -s lineage.csv
+          # The handoff file embeds a fresh build of the viewer. A few hundred bytes would
+          # mean the bundling step produced nothing and the page is an empty shell.
+          test "$(wc -c < handoff.html)" -gt 100000
+
+      # Ready for the day the npm account is reachable again: one `npm publish` per file,
+      # no rebuild, no guessing which commit they came from.
+      - name: Pack the individual packages too
+        run: |
+          mkdir -p "$RUNNER_TEMP/packages"
+          for pkg in core viewer export handoff cli; do
+            npm pack "./packages/$pkg" --pack-destination "$RUNNER_TEMP/packages"
+          done
+
+      # Skipped on a manual run from a branch, which has no release to attach to — that
+      # mode is for rehearsing the build and the verification without publishing anything.
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.build.outputs.tarball }}
+            ${{ runner.temp }}/release/pbi-lineage-lenz.tgz
+          draft: false
+          fail_on_unmatched_files: true

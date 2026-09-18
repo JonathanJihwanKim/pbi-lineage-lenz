@@ -64,7 +64,7 @@ describe('renderHandoff / extractPayload', () => {
     expect(html).toContain('console.log(1)');
     // The entire promise of the artifact: it fetches nothing.
     expect(html).not.toMatch(/<script[^>]+src=/i);
-    expect(html).not.toMatch(/<link[^>]+href=/i);
+    expect(html).not.toMatch(/<link[^>]+href="(?!data:)/i);
   });
 
   it('rejects a file that is not a handoff', () => {

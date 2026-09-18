@@ -23,7 +23,7 @@ The CLI and the browser both call this, and produce a byte-identical file.
 Most people want the CLI rather than this package:
 
 ```bash
-npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
+pbi-lineage-lenz handoff ./MyReport -o handoff.html
 ```
 
 MIT © Jihwan Kim

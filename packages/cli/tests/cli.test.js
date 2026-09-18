@@ -82,7 +82,7 @@ describe('handoff', () => {
     const html = readFileSync(target, 'utf-8');
     // The whole promise of the artifact, asserted where it is produced.
     expect(html).not.toMatch(/<script[^>]+src=/i);
-    expect(html).not.toMatch(/<link[^>]+href=/i);
+    expect(html).not.toMatch(/<link[^>]+href="(?!data:)/i);
     expect(html).toContain('id="lenz-payload"');
   });
 

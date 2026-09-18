@@ -7,11 +7,13 @@ model you did not build, and generate documentation that cannot go stale — the
 whole picture, as one HTML file, to someone who has never opened Power BI.
 
 ```bash
-npx pbi-lineage-lenz docs    ./MyReport -o MODEL.md      # documentation you commit
-npx pbi-lineage-lenz handoff ./MyReport -o handoff.html  # one file, for anyone
-npx pbi-lineage-lenz check   ./MyReport                  # the CI gate
-npx pbi-lineage-lenz impact  ./workspace --all --column dbo.orders.order_count
-                                                          # what breaks if I drop it?
+npm i -g https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/latest/download/pbi-lineage-lenz.tgz
+
+pbi-lineage-lenz docs    ./MyReport -o MODEL.md      # documentation you commit
+pbi-lineage-lenz handoff ./MyReport -o handoff.html  # one file, for anyone
+pbi-lineage-lenz check   ./MyReport                  # the CI gate
+pbi-lineage-lenz impact  ./workspace --all --column dbo.orders.order_count
+                                                     # what breaks if I drop it?
 ```
 
 [**▶ See a live example**](https://jonathanjihwankim.github.io/pbi-lineage-lenz/demo.html) —
@@ -62,7 +64,7 @@ built.
 ## Documentation, in one command
 
 ```bash
-npx pbi-lineage-lenz docs ./MyReport -o MODEL.md
+pbi-lineage-lenz docs ./MyReport -o MODEL.md
 ```
 
 **A markdown file you commit next to the PBIP**, so the model is readable in a pull request
@@ -213,7 +215,7 @@ Every lens starts from something a Power BI developer knows. A data engineer kno
 `lakehouse.dbo.orders.order_count`, and that is what `impact` takes:
 
 ```bash
-npx pbi-lineage-lenz impact ./workspace --all --column orders.order_count
+pbi-lineage-lenz impact ./workspace --all --column orders.order_count
 ```
 
 It returns the measures that read the column — following every measure-to-measure reference,
@@ -276,27 +278,40 @@ BI, no access to your workspace, and no install.
 Prefer machine-readable? **Export JSON** gives you the same parsed model the page is
 rendering.
 
-### 4. Do it from the command line
+### 4. Install the command line
+
+```bash
+npm i -g https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/latest/download/pbi-lineage-lenz.tgz
+```
+
+Installed from the GitHub release rather than from npm, which needs no account and no
+sign-in — `releases/latest/download` always resolves to the newest version. To pin one,
+use the versioned file on that release instead. Node 18 or newer; everything the tool
+needs travels inside the tarball apart from `esbuild`, which npm fetches for you.
+
+> **On npm, this package stops at 1.1.1.** The 2.x releases live here, on GitHub. The npm
+> packages are still built on every release and will be published again if that account
+> becomes reachable, but nothing about this tool depends on it.
 
 ```bash
 # Documentation to commit beside the PBIP — includes a mermaid ER diagram
 # that GitHub renders inline, so the model is readable in a pull request
-npx pbi-lineage-lenz docs ./MyReport -o MODEL.md
+pbi-lineage-lenz docs ./MyReport -o MODEL.md
 
 # The hero, scriptable
-npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
+pbi-lineage-lenz handoff ./MyReport -o handoff.html
 
 # CI gate — exits 1 on a broken reference
-npx pbi-lineage-lenz check ./MyReport
+pbi-lineage-lenz check ./MyReport
 
 # What reads this physical column, across every report in the folder
-npx pbi-lineage-lenz impact ./workspace --all --column orders.order_count
+pbi-lineage-lenz impact ./workspace --all --column orders.order_count
 
 # One row per binding, for a warehouse catalog or a semantic model
-npx pbi-lineage-lenz docs ./workspace --all --format csv -o lineage.csv
+pbi-lineage-lenz docs ./workspace --all --format csv -o lineage.csv
 
 # What changed about the model, not which lines moved
-npx pbi-lineage-lenz diff main..HEAD
+pbi-lineage-lenz diff main..HEAD
 ```
 
 Point any command at the project root, the `.SemanticModel` folder, or a bare `definition`
@@ -315,7 +330,7 @@ node packages/cli/src/bin.js handoff samples/contoso -o handoff.html
 ### 5. Commit the documentation beside the model — 1 minute
 
 ```bash
-npx pbi-lineage-lenz docs ./MyReport -o MODEL.md
+pbi-lineage-lenz docs ./MyReport -o MODEL.md
 git add MODEL.md && git commit -m "Regenerate model documentation"
 ```
 
@@ -433,7 +448,7 @@ send. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```bash
 npm install
-npm test                # 596 tests, on Linux and Windows
+npm test                # 597 tests, on Linux and Windows
                         # plus 44 more against a private production model, on the
                         # maintainer's disk only — they skip themselves everywhere else
 npm run dev             # the web app
@@ -445,7 +460,7 @@ packages/core      parsing, naming, graph, diff — platform independent
 packages/viewer    read-only UI; no file I/O, no network
 packages/handoff   one self-contained HTML file from a parsed model
 packages/export    markdown, mermaid ERD, JSON, the flat export, page maps
-packages/cli       npx pbi-lineage-lenz
+packages/cli       pbi-lineage-lenz
 apps/web           the browser app
 samples/contoso    the model behind every screenshot above
 ```

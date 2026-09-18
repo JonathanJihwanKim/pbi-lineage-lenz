@@ -12,10 +12,10 @@ directlake_import_composite.SemanticModel/   9 tables, 12 measures
 Point any command at this folder:
 
 ```bash
-npx pbi-lineage-lenz check   samples/contoso
-npx pbi-lineage-lenz handoff samples/contoso -o handoff.html
-npx pbi-lineage-lenz docs    samples/contoso -o MODEL.md
-npx pbi-lineage-lenz impact  samples/contoso --all --column dbo.sales.OrderKey
+pbi-lineage-lenz check   samples/contoso
+pbi-lineage-lenz handoff samples/contoso -o handoff.html
+pbi-lineage-lenz docs    samples/contoso -o MODEL.md
+pbi-lineage-lenz impact  samples/contoso --all --column dbo.sales.OrderKey
 ```
 
 ## Why this one

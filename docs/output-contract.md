@@ -105,8 +105,8 @@ reads. Report, page and visual context repeats on every row: it is a fact table,
 consumer will group by them.
 
 ```bash
-npx pbi-lineage-lenz docs ./MyReport --format csv -o lineage.csv
-npx pbi-lineage-lenz docs ./workspace --all --format ndjson -o lineage.ndjson
+pbi-lineage-lenz docs ./MyReport --format csv -o lineage.csv
+pbi-lineage-lenz docs ./workspace --all --format ndjson -o lineage.ndjson
 ```
 
 The file is written a row at a time, so a workspace-sized export never has to fit in memory.

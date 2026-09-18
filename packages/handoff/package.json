@@ -1,6 +1,6 @@
 {
   "name": "@pbi-lineage-lenz/handoff",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Build a single self-contained HTML file from a parsed Power BI model — opens in any browser with no Power BI, no PBIP folder, and no network access.",
   "type": "module",
   "main": "src/build.js",
@@ -14,8 +14,8 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@pbi-lineage-lenz/viewer": "2.0.0",
-    "esbuild": "^0.24.0"
+    "@pbi-lineage-lenz/viewer": "2.0.1",
+    "esbuild": "^0.25.0"
   },
   "license": "MIT",
   "author": "Jihwan Kim",

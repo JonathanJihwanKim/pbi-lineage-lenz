@@ -38,25 +38,32 @@ jobs:
         with:
           node-version: 22
 
-      # The version specifier is not decoration. Without it, npx resolves against
-      # whatever the checked-out repository declares, and in a repository that happens
-      # to contain a package of the same name it never reaches the registry at all —
-      # which is exactly how this workflow failed the first time it ran.
+      # In your own repository, replace this step with the one-line install:
       #
+      #   - run: npm i -g https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/latest/download/pbi-lineage-lenz.tgz
+      #
+      # Here it builds the tool from the code under review instead. That is not
+      # cosmetic: installing a released copy would mean a pull request that breaks the
+      # CLI still passes this workflow, because the workflow never ran the change.
+      - name: Install the tool from this checkout
+        run: |
+          npm ci
+          npm i -g "$(node scripts/build-standalone.js --out "$RUNNER_TEMP/release" | tail -1)"
+
       # The gate. Exits 1 on a broken reference — a measure reading a column that no
       # longer exists — and reports everything else without failing.
       - name: Check the model
-        run: npx --yes pbi-lineage-lenz@latest check "$PROJECT_PATH"
+        run: pbi-lineage-lenz check "$PROJECT_PATH"
 
       - name: Build the handoff file
-        run: npx --yes pbi-lineage-lenz@latest handoff "$PROJECT_PATH" -o handoff.html
+        run: pbi-lineage-lenz handoff "$PROJECT_PATH" -o handoff.html
 
       - name: Describe what changed
         id: diff
         run: |
           {
             echo 'summary<<HANDOFF_EOF'
-            npx --yes pbi-lineage-lenz@latest diff \
+            pbi-lineage-lenz diff \
               "origin/${{ github.base_ref }}..${{ github.sha }}" "$PROJECT_PATH" \
               || echo '_Could not compare against the base branch._'
             echo 'HANDOFF_EOF'

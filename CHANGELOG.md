@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.0.1 — install it from here
+
+No change to what the tool does. It changes where it comes from.
+
+Publishing to npm needs an account on a site that can, and did, lock the maintainer out of
+releasing their own work — a strange dependency for a tool whose source is right here, and
+one this project no longer has. Releases are now built and attached by CI, using nothing
+but the token GitHub Actions mints for the run.
+
+```bash
+npm i -g https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/latest/download/pbi-lineage-lenz.tgz
+pbi-lineage-lenz docs ./MyReport -o MODEL.md
+```
+
+- **One tarball per release**, carrying the four internal packages inside it via
+  `bundleDependencies`. The layout is preserved rather than bundled into a single file,
+  because `handoff` builds the viewer with esbuild at runtime and reads its stylesheet off
+  disk — flattening it would break that command on a user's machine and nowhere else.
+- **The artefact is installed into an empty project and run before it is published**, on
+  every release and on every pull request. A tarball that lost its bundled packages still
+  builds and still looks right; only running it finds out.
+- **`esbuild` moved to `^0.25.0`**, clearing three moderate advisories that showed up on
+  every install. It is used as a library here, never as a dev server, so the advisory could
+  not bite — but nobody should have to work that out from an audit warning.
+- **The handoff workflow builds the tool from the code under review** instead of installing
+  a published copy, so a pull request that breaks the CLI no longer passes its own workflow.
+
+**On npm, this package stops at 1.1.1.** The five packages are still built on every release
+and can be published unchanged if that account becomes reachable; nothing here depends on it.
+
+
 ## 2.0.0 — the other direction, a whole workspace, and a gate you can switch on today
 
 Every change here answers a question somebody had to write their own script for, running

@@ -122,6 +122,11 @@ export function renderHandoff({ model, css, js, title }) {
 <meta name="description" content="${escapeHtml(summary)}">
 <meta name="generator" content="PBI Lineage Lenz">
 <meta name="robots" content="noindex">
+<!-- An empty icon, declared so the browser does not go asking the server for /favicon.ico.
+     A handoff file is meant to make no network requests at all, and on a file:// copy that
+     request is merely invisible rather than absent — served from a web host it is a 404 in
+     everyone's console. -->
+<link rel="icon" href="data:,">
 <style>${css}</style>
 </head>
 <body class="lenz">

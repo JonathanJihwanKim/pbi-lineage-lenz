@@ -23,7 +23,7 @@ app and inside a self-contained handoff file.
 Most people want the CLI rather than this package:
 
 ```bash
-npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
+pbi-lineage-lenz handoff ./MyReport -o handoff.html
 ```
 
 MIT © Jihwan Kim

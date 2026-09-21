@@ -9,5 +9,5 @@
  */
 
 export {
-  partitionPbip, planOpen, keyOf, describeProblem, shouldRead, normalizePath,
+  partitionPbip, planOpen, joinReportToModel, keyOf, describeProblem, shouldRead, normalizePath,
 } from '@pbi-lineage-lenz/core';

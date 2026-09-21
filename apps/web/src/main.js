@@ -18,7 +18,7 @@ import { analyzeFromFiles, parseModel, analyzeReport, identifyProjectStructure }
 import { toViewerModel, mountViewer, h, replace } from '@pbi-lineage-lenz/viewer';
 import { extractPayload } from '@pbi-lineage-lenz/handoff/template';
 import { pickFolder, pickFile, hasFileSystemAccess } from './readFolder.js';
-import { planOpen } from './pbipFolder.js';
+import { planOpen, joinReportToModel } from './pbipFolder.js';
 import { buildHandoffInBrowser, saveFile } from './exportHandoff.js';
 import { toJson, jsonFileName } from '@pbi-lineage-lenz/export';
 import { valueMoment } from './valueMoment.js';
@@ -37,6 +37,15 @@ let picked = null;
 
 /** Parsed models, keyed as partitionEstate keys them. A shared model is parsed once. */
 const parsedModels = new Map();
+
+/**
+ * A report picked on its own, waiting for the model it named.
+ *
+ * `{ files, name, wanted, handle }` — held between the two picks, because the second one
+ * needs a click of its own: a directory picker needs a user gesture, and the first one was
+ * spent opening the report.
+ */
+let pendingReport = null;
 
 /** Follow the reader's system theme rather than imposing one. */
 function applyTheme() {
@@ -57,10 +66,15 @@ function showLanding(message) {
   teardown();
   root.className = 'app-landing';
 
+  // One way in, on purpose. Every earlier version of this screen offered a choice before
+  // the reader knew enough to make it — which folder, which level, which half — and the
+  // answer was always the same folder. Pick the repository; the next screen says what is
+  // in it. A .Report folder picked by mistake is still handled, it just is not offered as
+  // a thing to decide between up front.
   const openFolder = h('button.btn.btn-accent.big', {
     type: 'button',
     onClick: () => loadFolder(),
-  }, 'Open a PBIP project folder');
+  }, 'Open a repository folder');
 
   const openHandoff = h('button.btn.big', {
     type: 'button',
@@ -92,16 +106,19 @@ function showLanding(message) {
       // the shape answers that faster than a sentence about it.
       h('div.landing-hint',
         h('pre.landing-tree', [
-          'my_workspace/                              ← pick this folder',
+          'contoso_project/                           ← the repository — pick this',
           '├─ contoso_project.Report/',
-          '│  └─ definition.pbir                      ← names the model it reads',
-          '├─ contoso_sales_thin.Report/',
-          '└─ directlake_import_composite.SemanticModel/',
+          '│  └─ definition.pbir                      names the model it reads',
+          '├─ contoso_import.Report/',
+          '├─ directlake_import_composite.SemanticModel/',
+          '└─ contoso_import.SemanticModel/',
         ].join('\n')),
         h('p',
-          'Pick the folder that holds your .Report and .SemanticModel folders — not one of '
-          + 'them. If it holds several reports, you choose which one next. A .SemanticModel '
-          + 'folder on its own also works, for the model lenses without the report.')),
+          'The repository folder — the one your .Report and .SemanticModel folders sit in. '
+          + 'You are not asked to work out which model belongs to which report: each report '
+          + 'names its own in definition.pbir, so the next screen shows them already paired, '
+          + 'and you pick the report you came for. One report in there and it opens straight '
+          + 'away.')),
 
       h('div.landing-note',
         hasFileSystemAccess()
@@ -228,7 +245,7 @@ function showViewer(model, { source, canSwitch = false }) {
     ? h('button.btn', { type: 'button', onClick: () => showChooser() }, 'Switch report')
     : null;
 
-  const closeBtn = h('button.btn', { type: 'button', onClick: () => { picked = null; showLanding(); } }, 'Close');
+  const closeBtn = h('button.btn', { type: 'button', onClick: () => { picked = null; pendingReport = null; showLanding(); } }, 'Close');
 
   // "Shop · Shop" when a folder is named after the model it holds, which is the common
   // case — the second half only earns its space when it says something new.
@@ -237,6 +254,109 @@ function showViewer(model, { source, canSwitch = false }) {
 
   const actions = [status, jsonBtn, exportBtn, switchBtn, closeBtn].filter(Boolean);
   viewer = mountViewer(root, model, { subtitle, actions });
+}
+
+/**
+ * A report was opened on its own; ask for the model it named.
+ *
+ * Not a correction. The report folder is the right thing to have picked — it is the half
+ * somebody was working in, and the only half that states which model it reads. What it
+ * cannot do is reach that model: a directory handle has no parent, so `../X.SemanticModel`
+ * is readable as text and unopenable as a folder.
+ *
+ * So the app names the folder it needs and asks for it. The second picker needs a click of
+ * its own, because opening the first one spent the gesture that a picker requires.
+ */
+function showNeedsModel(message) {
+  teardown();
+  root.className = 'app-landing';
+
+  const { name, wanted } = pendingReport;
+
+  const pickModel = h('button.btn.btn-accent.big', {
+    type: 'button',
+    onClick: () => loadModelFor(),
+  }, `Open ${wanted}`);
+
+  replace(root,
+    h('div.landing',
+      h('div.landing-mark', h('span.lens'), h('b', 'PBI Lineage Lenz')),
+
+      message ? h('div.notice.notice-warn', message) : null,
+
+      h('div.chooser-head',
+        h('b', 'One more folder'),
+        h('p', `${name} reads `),
+        h('pre.landing-tree', wanted),
+        h('p',
+          'That folder sits beside the report rather than inside it, and a browser can read '
+          + 'only the folder you pick — so it has to be picked too. This is the last step; '
+          + 'the report itself is already read.')),
+
+      h('div.landing-actions',
+        pickModel,
+        h('button.btn.big', {
+          type: 'button',
+          onClick: () => { pendingReport = null; showLanding(); },
+        }, 'Start over')),
+
+      // The way to spend one dialog instead of two, for anyone who would rather.
+      h('div.landing-note',
+        `Opening ${name.replace(/\.Report$/i, '')}’s parent folder instead reads the report and `
+        + 'the model in one pick, and lists every other report in there as well.'),
+
+      footer()));
+}
+
+/**
+ * Read the model a pending report named, and show the two together.
+ *
+ * The folder picked here is taken at its word rather than checked against the name the
+ * report asked for: people rename folders, and a model that parses is better evidence than
+ * a string match. A mismatch is worth saying, not worth refusing.
+ */
+async function loadModelFor() {
+  const waiting = pendingReport;
+  try {
+    const folder = await pickFolder(undefined, { startIn: waiting.handle ?? undefined });
+    if (!folder || folder.cancelled) { showNeedsModel(cancelMessage(folder)); return; }
+
+    const progress = showBusy('Reading the semantic model');
+    progress(folder.name);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    const partition = joinReportToModel({
+      reportFiles: waiting.files,
+      reportName: waiting.name,
+      modelFiles: folder.files,
+      modelName: folder.name,
+    });
+
+    if (partition.modelFiles.size === 0) {
+      pendingReport = waiting;
+      showNeedsModel(`${folder.name} holds no model files. `
+        + `Look for ${waiting.wanted}, beside the report you opened.`);
+      return;
+    }
+
+    const analysis = analyzeFromFiles({
+      modelFiles: partition.modelFiles,
+      reportFiles: partition.reportFiles ?? undefined,
+    });
+
+    pendingReport = null;
+    showViewer(toViewerModel(analysis, {
+      modelName: partition.modelName,
+      reportName: partition.reportName,
+      modelKey: partition.modelKey,
+      reportKey: partition.reportKey,
+      projectPath: folder.name,
+    }), { source: `${waiting.name} · ${folder.name}` });
+  } catch (error) {
+    console.error(error);
+    pendingReport = waiting;
+    showNeedsModel(error.message);
+  }
 }
 
 /**
@@ -306,7 +426,7 @@ function showChooser() {
         : null,
 
       h('div.chooser-actions',
-        h('button.btn', { type: 'button', onClick: () => { picked = null; showLanding(); } },
+        h('button.btn', { type: 'button', onClick: () => { picked = null; pendingReport = null; showLanding(); } },
           'Pick a different folder')),
 
       footer()));
@@ -362,24 +482,108 @@ function showError(title, detail) {
 
 // ── Actions ─────────────────────────────────────────────────────────────────────
 
-async function loadFolder() {
+/**
+ * Why nothing came back from the picker, in terms of what to do about it.
+ *
+ * The trailing reason is deliberate. "Nothing happened" is the least diagnosable bug there
+ * is, and the one word saying which branch produced this screen is the difference between
+ * guessing and knowing — for whoever is reading it, and for whoever is asked about it.
+ */
+function cancelMessage(result, basic = false) {
+  const reason = result?.cancelled ?? 'no-result';
+
+  // Whatever the browser is doing, there is a second way in that needs none of its
+  // permissions — so the way out is offered on the screen that reports the problem,
+  // rather than left for somebody to find.
+  const fallback = basic ? null : h('button.btn', {
+    type: 'button',
+    onClick: () => loadFolder({ basic: true }),
+  }, 'Use the basic file picker');
+
+  // A dialog that stood open for seconds was not blocked by anything — it was closed.
+  // Saying "your site is blocked" here contradicts the very measurement printed below it,
+  // and sends somebody into browser settings that are working perfectly well.
+  const seconds = result?.elapsed ? (result.elapsed / 1000).toFixed(1) : null;
+
+  if (reason === 'aborted') {
+    return h('span',
+      seconds
+        ? `The picker was open for ${seconds} seconds and then closed without handing a folder over. `
+        : 'The picker closed without handing a folder over. ',
+      'Two things do that:',
+      h('ul.notice-steps',
+        h('li', h('b', 'Chrome asks a second time.'), ' After you choose a folder it asks '
+          + '“Let site view files?”. That one needs View files — closing it, or pressing Escape, '
+          + 'cancels the whole thing.'),
+        h('li', h('b', 'Cancel in the folder dialog.'), ' If that is what happened, just pick again.')),
+      'Pick the repository folder itself — contoso_project — rather than a .Report folder inside it.',
+      h('div.notice-actions', fallback),
+      h('span.notice-reason', result?.detail ? `${reason} · ${result.detail}` : `picker outcome: ${reason}`));
+  }
+
+  return h('span',
+    'The browser refused the folder picker before it ever appeared. That is a setting or a '
+    + 'policy, not something you did — Chrome blocks file access per site, and once '
+    + 'blocked it stops asking:',
+    h('ul.notice-steps',
+      h('li', 'Click the icon at the left of the address bar, beside the page URL.'),
+      h('li', 'Open Site settings and find File editing (or File System).'),
+      h('li', 'Set it to Ask, then reload this page and try again.')),
+    'Or skip it entirely — the basic picker reads the same folder and needs no permission. '
+    + 'The only thing it loses is choosing where an export saves.',
+    h('div.notice-actions', fallback),
+    h('span.notice-reason', result?.detail ? `${reason} · ${result.detail}` : `picker outcome: ${reason}`));
+}
+
+async function loadFolder({ basic = false } = {}) {
   const progress = showBusy('Reading your project folder');
   try {
-    const folder = await pickFolder((count) => progress(`${count} files`));
-    if (!folder) { showLanding(); return; }
+    const folder = await pickFolder((count) => progress(`${count} files`), { basic });
+
+    // Nothing came back. Repainting the same landing screen in silence is
+    // indistinguishable from the click having done nothing at all, so say which way it
+    // went — the two have different remedies.
+    // Refused before a dialog ever appeared: the File System Access API is blocked here,
+    // by policy or by a site setting, and no amount of retrying it will help. The plain
+    // file input reads the same folder and needs no permission, so take that route now
+    // rather than making somebody read an explanation and click again.
+    if (folder?.cancelled === 'refused' && !basic) {
+      progress('the browser blocked the folder picker · trying the basic one');
+      loadFolder({ basic: true });
+      return;
+    }
+
+    if (!folder || folder.cancelled) {
+      showLanding(cancelMessage(folder, basic));
+      return;
+    }
+
+    if (folder.files.size === 0) {
+      showLanding(`${folder.name} has no files this can read — no .tmdl, .json or .pbir `
+        + 'anywhere inside it. Open a .Report folder, or the folder that holds your '
+        + '.Report and .SemanticModel folders.');
+      return;
+    }
 
     progress(`${folder.files.size} files read · parsing`);
     // One frame, so the count above actually paints before the parse blocks the thread.
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
     picked = null;
+    pendingReport = null;
     parsedModels.clear();
 
-    // One pick, three honest outcomes: something to read, something to choose between, or
-    // something to say about what was picked.
+    // One pick, four honest outcomes: something to read, something to choose between, one
+    // folder still needed, or something to say about what was picked.
     const plan = planOpen(folder.files, { name: folder.name });
 
     if (plan.screen === 'problem') { showLanding(plan.message); return; }
+
+    if (plan.screen === 'model-wanted') {
+      pendingReport = { ...plan.report, handle: folder.handle ?? null };
+      showNeedsModel();
+      return;
+    }
 
     if (plan.screen === 'chooser') {
       picked = { estate: plan.estate, name: folder.name };

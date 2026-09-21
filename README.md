@@ -27,27 +27,54 @@ Free and open source. No paid tier, no login, no server.
 
 ## Open your own model — 1 minute
 
-**[Open the web app →](https://jonathanjihwankim.github.io/pbi-lineage-lenz/)** and click
-**Open a PBIP project folder**. Pick the folder that *holds* your `.Report` and
-`.SemanticModel` folders — not one of them:
+**[Open the web app →](https://jonathanjihwankim.github.io/pbi-lineage-lenz/)**, click
+**Open a repository folder**, and pick the folder your Power BI items sit in — the
+repository itself, not one of the folders inside it:
 
 ```text
-my_workspace/                              ← pick this folder
+contoso_project/                           ← the repository — pick this
 ├─ contoso_project.Report/
-│  └─ definition.pbir                      ← names the model it reads
-├─ contoso_sales_thin.Report/
-└─ directlake_import_composite.SemanticModel/
+│  └─ definition.pbir                      names the model it reads
+├─ contoso_import.Report/
+├─ directlake_import_composite.SemanticModel/
+└─ contoso_import.SemanticModel/
 ```
 
-A browser can only read the folder you pick, and a report's model is its *sibling* — so
-pointing at `contoso_project.Report` leaves the model out of reach. **If the folder holds
-several reports, the app asks which one**, listing each under the model its
-`definition.pbir` names. That pairing is the only reliable one: above, `contoso_project`
-reads `directlake_import_composite`, a name it shares nothing with.
+> **Chrome and Edge ask twice.** After you choose the folder, a small bubble appears near
+> the address bar: *"Let site view files?"*. Click **View files**. Dismissing it or pressing
+> Escape cancels the whole thing and nothing opens — which looks like the app doing
+> nothing. If that happens, the page says so and offers a basic file picker that needs no
+> permission at all.
 
-A `.SemanticModel` folder on its own also works — you get the model lenses without the
-report. Nothing is uploaded: the folder is read, parsed and rendered in the page, and there
-is no server to send it to.
+Then pick the report you came for:
+
+```text
+Which report?
+  contoso_project holds 2 semantic models and 2 reports.
+
+  SEMANTIC MODEL  contoso_import
+    contoso_import                         0 visuals
+    Open the model on its own              no report
+
+  SEMANTIC MODEL  directlake_import_composite
+    contoso_project                        4 visuals
+    Open the model on its own              no report
+```
+
+**You are never asked which model belongs to which report.** Each report names its own in
+`definition.pbir`, and that is the only reliable link: above, `contoso_project` reads
+`directlake_import_composite` — a name it shares nothing with, which no amount of
+name-matching would find. One report in the folder and it opens straight away; several and
+you pick from the list. **Switch report** in the header moves between them without picking
+the folder again.
+
+**Other things you can point it at.** A single `.Report` folder works — it names its model
+and the app asks for that one folder as a second step, because a browser can read only the
+folder you pick and the model is the report's *sibling* rather than something inside it. A
+`.SemanticModel` folder on its own works too, giving the model lenses without the report.
+
+Nothing is uploaded: the folder is read, parsed and rendered in the page, and there is no
+server to send it to.
 
 ---
 
@@ -287,13 +314,13 @@ This is also exactly what a handoff file looks like when somebody sends you one.
 ### 2. Open your own model — 1 minute
 
 **[Open the web app →](https://jonathanjihwankim.github.io/pbi-lineage-lenz/)** and click
-**Open a PBIP project folder**.
+**Open a repository folder**.
 
-- **Which folder?** [The one that holds your `.Report` and `.SemanticModel`
-  folders](#open-your-own-model--1-minute) — not one of them.
-- **Several reports in it?** The app asks which one, listing each under the model its
-  `definition.pbir` names. **Switch report** in the header moves between them without
-  picking the folder again.
+- **Which folder?** [The repository](#open-your-own-model--1-minute) — the folder your
+  `.Report` and `.SemanticModel` folders sit in. The next screen lists what is in it,
+  already paired, and you pick the report you want.
+- **Chrome asks twice.** Choose the folder, then click **View files** in the bubble by the
+  address bar. Dismissing it cancels the pick.
 - **Is anything uploaded?** No. The folder is read in the page, parsed in the page, and
   rendered in the page. There is no server to send it to.
 - **Which browsers?** Chrome and Edge get a proper folder picker. Firefox and Safari work

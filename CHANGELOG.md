@@ -1,33 +1,43 @@
 # Changelog
 
-## Unreleased — which folder, and which report
+## Unreleased — one folder to open, and it says what is in it
 
-"Open a PBIP folder" never said which folder, and a Fabric workspace synced to git holds
-several of each. The pick that looks most sensible — the `.Report` folder you were editing,
-the only half that states which model it reads — was the one that could not work: a browser
-hands over the folder you picked and nothing above it, so the model, which is that folder's
-*sibling*, is out of reach. It failed with "No TMDL files here", which describes none of
-that.
+"Open a PBIP folder" never said which folder. A Fabric workspace synced to git holds several
+`.Report` and several `.SemanticModel` folders side by side, and the label named none of
+them — so the first thing the tool asked was a question the reader had no way to answer yet.
 
-So the pick stays at the folder that holds both, and the choice moves inside the app, where
-`definition.pbir` has already been read.
+There is now one button, **Open a repository folder**, and it takes the folder those items
+sit in. The screen after it does the explaining: every report listed under the model its
+`definition.pbir` names, with its visual count, ready to pick. Nobody is asked which model
+belongs to which report.
 
-- **The app asks which report** when the folder holds more than one, listing each under the
-  model its `definition.pbir` names — not the one it sorts next to. Reports whose model is
-  not in the folder are listed with the reason rather than dropped. Replaces a note that
-  chose silently and told browser users to pass `--all`, a flag that exists only in the
-  command line.
+- **One action, not a choice between three.** The `.Report` route still works — a report
+  names its model and the app asks for that one folder as a second step — but it is no
+  longer offered as a decision up front. A browser can read only the folder you pick, and a
+  report's model is its sibling, so that route can never be the short one.
+- **Reports are paired by `definition.pbir`, never by name.** `contoso_project` reads
+  `directlake_import_composite`, and reading the first `.Report` beside the first
+  `.SemanticModel` — which is what this used to do — pairs report A with model B in any
+  folder holding more than one of each. Reports whose model is absent are listed with the
+  reason rather than dropped.
 - **Switch report** moves between reports over a shared model without picking the folder
-  again, and parses that model once however many times you switch.
-- **A wrong folder says what it was.** Pointing at a `.Report` folder now names it, names
-  the model it asked for, and says to pick one level up. Pointing at a report that reads a
-  published model says that instead.
-- **The landing page shows the folder shape it wants**, which answers "which folder?" faster
-  than a sentence about it. The README answers it above the fold, where the instructions
-  were previously 250 lines down.
-- **Unambiguous folders are untouched**: one model with one report, a lone `.SemanticModel`,
-  and a bare `definition` folder open straight to the viewer exactly as before. No change to
-  the CLI, the handoff file, or the release.
+  again, parsing that model once however many times you switch.
+- **A pick that comes back empty now says why.** It used to repaint the same screen in
+  silence, which is indistinguishable from the click having done nothing. It now separates
+  a picker the browser refused outright from one that was open and then closed — the
+  elapsed time tells them apart — and names Chrome's second prompt, *"Let site view
+  files?"*, which cancels the pick when dismissed and is the likeliest reason a carefully
+  chosen folder never arrives.
+- **A fallback that needs no permission.** Where the File System Access API is blocked by
+  policy or site setting, the plain file input reads the same folder. If the picker is
+  refused before any dialog appears, the app switches to it automatically.
+- **Large folders no longer come back empty** through that fallback: it waited 500ms after
+  the window regained focus and gave up, which a folder of thousands of files can exceed.
+  It now uses the browser's own `cancel` event where that exists.
+
+`partitionEstate()` keeps each report's raw reference rather than folding it into prose,
+because a caller asking for a folder by name needs the name. No change to the CLI, the
+handoff file, or the release.
 
 ## 2.0.1 — install it from here
 

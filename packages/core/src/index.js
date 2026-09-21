@@ -12,7 +12,7 @@ import { parseDaxExpression, extractColumnRefs, extractMeasureRefs, extractTable
 import { parsePbirReport, parseReportExtensions } from './parser/pbirParser.js';
 import { detectEnrichments, applyEnrichments } from './parser/enrichment.js';
 import { identifyProjectStructure, findDefinitionPbir, parseSemanticModelReference, isRelevantFile, RELEVANT_EXTENSIONS } from './parser/projectStructure.js';
-import { partitionPbip, partitionEstate, planOpen, keyOf, describeProblem, describeChoice, describeReportOnly, shouldRead, normalizePath } from './parser/projectLayout.js';
+import { partitionPbip, partitionEstate, planOpen, keyOf, describeProblem, describeChoice, describeReportOnly, joinReportToModel, shouldRead, normalizePath } from './parser/projectLayout.js';
 import { parseBookmarks, resolveVisibility, visibilityKey } from './parser/bookmarks.js';
 import {
   resolveFieldParameters, findMissingNameOfTargets, expandFieldParameters, parseNameOfTargets, isFieldParameterTable,
@@ -53,7 +53,7 @@ export {
   parsePbirReport, parseReportExtensions,
   detectEnrichments, applyEnrichments,
   identifyProjectStructure, findDefinitionPbir, parseSemanticModelReference, isRelevantFile, RELEVANT_EXTENSIONS,
-  partitionPbip, partitionEstate, planOpen, keyOf, describeProblem, describeChoice, describeReportOnly, shouldRead, normalizePath,
+  partitionPbip, partitionEstate, planOpen, keyOf, describeProblem, describeChoice, describeReportOnly, joinReportToModel, shouldRead, normalizePath,
   parseBookmarks, resolveVisibility, visibilityKey,
   resolveFieldParameters, findMissingNameOfTargets, expandFieldParameters, parseNameOfTargets, isFieldParameterTable,
   // Graph

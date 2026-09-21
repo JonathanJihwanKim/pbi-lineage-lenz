@@ -77,24 +77,51 @@ export async function readFileList(fileList, onProgress) {
 
 /**
  * Open a directory picker by whichever route exists.
- * @returns {Promise<{files: Map<string, string>, handle: object|null, name: string}|null>}
- *   null when the user cancels.
+ *
+ * @param {(count: number) => void} [onProgress]
+ * @param {object} [options]
+ * @param {object} [options.startIn] - A directory handle to open the dialog beside.
+ * @returns {Promise<{files: Map<string, string>, handle: object|null, name: string}
+ *   | {cancelled: string, detail?: string}>}
+ *   A `cancelled` result when nothing came back, saying which way.
  */
-export async function pickFolder(onProgress) {
-  if (hasFileSystemAccess()) {
+export async function pickFolder(onProgress, { startIn = null, basic = false } = {}) {
+  if (hasFileSystemAccess() && !basic) {
     let handle;
+    // How long the call took before it failed says whether a dialog was ever on screen.
+    // A person choosing a folder takes seconds; a refusal that never showed them anything
+    // comes back in milliseconds, and the two need different remedies.
+    const started = Date.now();
     try {
-      handle = await globalThis.showDirectoryPicker({ id: 'pbip', mode: 'read' });
+      // `startIn` opens the dialog beside the folder already picked, so reaching the
+      // model that sits next to a report is one step up rather than a fresh hunt.
+      handle = await globalThis.showDirectoryPicker({
+        id: 'pbip', mode: 'read', ...(startIn ? { startIn } : {}),
+      });
     } catch (error) {
-      // A cancelled picker throws rather than resolving to null. That is not an error.
-      if (error?.name === 'AbortError') return null;
+      // A cancelled picker throws rather than resolving to null. That is not an error —
+      // but the reason is worth carrying out, because "nothing came back" and "you
+      // pressed cancel" look identical on screen and have different remedies.
+      const elapsed = Date.now() - started;
+      const detail = `${error?.name ?? 'Error'}: ${error?.message ?? 'no message'} · after ${elapsed}ms`;
+      if (error?.name === 'AbortError') {
+        // Under a quarter-second, nothing was ever shown to dismiss.
+        return { cancelled: elapsed < 250 ? 'refused' : 'aborted', detail, elapsed };
+      }
+      if (error?.name === 'SecurityError' || error?.name === 'NotAllowedError') {
+        return { cancelled: 'blocked', detail, elapsed };
+      }
       throw error;
     }
+    // No permission dance here on purpose: choosing a folder in the picker *is* the grant
+    // for `mode: 'read'`, and `requestPermission()` needs a user activation that the
+    // picker has just consumed — so asking again reliably answers "denied" and loses the
+    // folder the user already chose.
     return { files: await readDirectoryHandle(handle, onProgress), handle, name: handle.name };
   }
 
   const fileList = await promptForDirectory();
-  if (!fileList || fileList.length === 0) return null;
+  if (!fileList || fileList.length === 0) return { cancelled: 'aborted', detail: 'file input returned nothing' };
 
   const first = normalizePath(fileList[0].webkitRelativePath || '');
   return {
@@ -130,9 +157,15 @@ function promptForDirectory() {
 
     input.addEventListener('change', () => finish(input.files));
     input.addEventListener('cancel', () => finish(null));
-    addEventListener('focus', () => {
-      setTimeout(() => { if (!input.files || input.files.length === 0) finish(null); }, 500);
-    }, { once: true });
+
+    // The focus fallback is a guess with a deadline, and a folder of thousands of files
+    // can still be filling in when it fires — so it only runs where `cancel` does not
+    // exist, and waits long enough not to cut a large folder short.
+    if (!('oncancel' in input)) {
+      addEventListener('focus', () => {
+        setTimeout(() => { if (!input.files || input.files.length === 0) finish(null); }, 2000);
+      }, { once: true });
+    }
 
     input.click();
   });

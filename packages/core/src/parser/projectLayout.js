@@ -331,8 +331,10 @@ export function describeChoice(partition) {
  */
 export function describeProblem(partition) {
   if (partition.layout === 'unknown' || partition.modelFiles.size === 0) {
-    return 'No TMDL files here. Point at the folder that holds your .SemanticModel and .Report folders — '
-      + 'the one next to your .pbip file.';
+    // Shared with the CLI, which cannot offer a second pick — so it promises nothing a
+    // command line could not keep.
+    return 'No TMDL files here. Point at the folder that holds your .Report and .SemanticModel '
+      + 'folders, or at a .SemanticModel folder on its own.';
   }
   return null;
 }
@@ -381,33 +383,78 @@ export function describeReportOnly(estate) {
  * Both pickers hand over paths relative to what was picked, with the folder's own name
  * stripped — so pointing at `contoso_project.Report` arrives as `definition.pbir` and
  * `definition/pages/...`, with no `.Report` segment anywhere for a suffix scan to find.
- * This is the single most likely wrong pick there is, and without this check it lands on
- * the generic "no TMDL files" message, which describes none of it.
+ *
+ * This is the pick to expect rather than the pick to correct: a report folder is the half
+ * somebody was working in, and the only half that states which model it reads. What it
+ * cannot do is *reach* that model. A directory handle has no parent, and `..` is not a
+ * name a handle will resolve — so `../Sales.SemanticModel` is readable as text and
+ * unopenable as a folder. Naming it and asking for it is the whole remedy.
  *
  * @param {Map<string, string>} files - Already normalized.
  * @param {string|null} name - What the picker called the folder, when it said.
- * @returns {string|null} null when the picked folder is not a report.
+ * @returns {{wanted: string, reference: string}|{message: string}|null}
+ *   null when the picked folder is not itself a report.
  */
-function describeRootReport(files, name) {
+function inspectRootReport(files, name) {
   const pbir = files.get('definition.pbir');
   if (pbir === undefined) return null;
+  return inspectReportReference(pbir, name ?? 'This folder');
+}
 
-  const folder = name ? `${name}` : 'This folder';
+/** What a report's `definition.pbir` leaves a caller able to do. */
+function inspectReportReference(pbir, folder) {
   const reference = parseSemanticModelReference(pbir);
 
   if (!reference) {
-    return /byConnection/i.test(pbir)
-      ? `${folder} is a report folder, and it reads a published semantic model rather than one `
-        + 'on disk — so there is no model here to trace a column back to. Point at a folder that '
-        + 'holds a .SemanticModel folder.'
-      : `${folder} is a report folder, and its definition.pbir names no semantic model. `
-        + 'Point at the folder that holds your .SemanticModel folder.';
+    return {
+      message: /byConnection/i.test(pbir)
+        ? `${folder} reads a published semantic model rather than one on disk, so there is `
+          + 'no model here to trace a column back to. Open a folder that holds a '
+          + '.SemanticModel folder.'
+        : `${folder} names no semantic model in its definition.pbir. Open a folder that `
+          + 'holds a .SemanticModel folder.',
+    };
   }
 
-  const wanted = reference.split('/').filter((part) => part && part !== '..').pop();
-  return `${folder} is a report folder. The semantic model it reads — ${wanted} — sits beside it, `
-    + 'not inside it, and a browser can only read the folder you pick. '
-    + 'Pick the folder one level up: the one that holds both.';
+  return { reference, wanted: referenceName(reference) };
+}
+
+/** The folder name at the end of a `../Sales.SemanticModel` reference. */
+function referenceName(reference) {
+  return normalizePath(reference).split('/').filter((part) => part && part !== '..').pop();
+}
+
+/**
+ * Put a separately-picked report and model back together.
+ *
+ * The two halves arrive from two pickers, each relativized to its own folder, which is
+ * exactly the shape `partitionPbip` would have produced had they been picked as one. The
+ * return shape matches it for that reason: everything downstream stays ignorant of how
+ * many dialogs it took.
+ *
+ * @returns {{modelFiles: Map, reportFiles: Map|null, modelName: string, reportName: string,
+ *   modelKey: string, reportKey: string, layout: string}}
+ */
+export function joinReportToModel({ reportFiles, reportName, modelFiles, modelName }) {
+  const relativize = (files) => {
+    const normalized = new Map();
+    for (const [path, content] of files) normalized.set(normalizePath(path), content);
+    return definitionOf(normalized, '');
+  };
+
+  const report = reportFiles ? relativize(reportFiles) : null;
+  const base = (value) => String(value ?? '').replace(/\.(SemanticModel|Report)$/i, '');
+
+  return {
+    modelFiles: relativize(modelFiles),
+    reportFiles: report && report.size > 0 ? report : null,
+    modelName: base(modelName),
+    reportName: base(reportName),
+    modelKey: base(modelName),
+    reportKey: base(reportName),
+    layout: 'joined',
+    pairs: [],
+  };
 }
 
 /**
@@ -427,6 +474,8 @@ function describeRootReport(files, name) {
  * @param {string} [options.name] - What the picker called the folder, used to name it back.
  * @returns {{screen: 'viewer', partition: object}
  *   | {screen: 'chooser', estate: object}
+ *   | {screen: 'model-wanted', report: {files: Map, name: string|null, reference: string,
+ *       wanted: string}}
  *   | {screen: 'problem', message: string}}
  */
 export function planOpen(files, { name = null } = {}) {
@@ -436,9 +485,36 @@ export function planOpen(files, { name = null } = {}) {
   const estate = partitionEstate(normalized);
 
   if (estate.models.length === 0) {
-    const rootReport = describeRootReport(normalized, name);
-    if (rootReport) return { screen: 'problem', message: rootReport };
-    if (estate.reports.length > 0) {
+    // The report folder itself: the pick to expect, not the pick to correct. It states
+    // which model it reads and cannot open it, so the app asks for that one folder by name.
+    const root = inspectRootReport(normalized, name);
+    if (root) {
+      return root.message
+        ? { screen: 'problem', message: root.message }
+        : {
+          screen: 'model-wanted',
+          report: { files: definitionOf(normalized, ''), name: name ?? null, ...root },
+        };
+    }
+
+    // A folder holding exactly one report and no model: same situation, one level out.
+    if (estate.reports.length === 1) {
+      const [only] = estate.reports;
+      const pbir = normalized.get(`${only.root}/definition.pbir`);
+      const seen = pbir === undefined
+        ? { message: `${only.name}.Report has no definition.pbir, so the model it reads is not `
+          + 'stated. Open a folder that holds a .SemanticModel folder.' }
+        : inspectReportReference(pbir, `${only.name}.Report`);
+
+      return seen.message
+        ? { screen: 'problem', message: seen.message }
+        : {
+          screen: 'model-wanted',
+          report: { files: only.files, name: `${only.name}.Report`, ...seen },
+        };
+    }
+
+    if (estate.reports.length > 1) {
       return { screen: 'problem', message: describeReportOnly(estate) };
     }
   }

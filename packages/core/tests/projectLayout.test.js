@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  partitionPbip, shouldRead, normalizePath, describeProblem, planOpen,
+  partitionPbip, shouldRead, normalizePath, describeProblem, planOpen, joinReportToModel,
 } from '../src/parser/projectLayout.js';
 
 const TABLE = 'table Sales\n\tcolumn Amount\n';
@@ -279,27 +279,31 @@ describe('planOpen', () => {
     expect(plan.partition.layout).toBe('definition');
   });
 
-  it('names the report folder and the model it wanted, rather than "no TMDL files"', () => {
-    // What you get by pointing at the half of the project you were working in. The model
-    // is one level up, which is exactly what the message has to say.
+  it('asks for the model by name when the report folder itself was picked', () => {
+    // The pick to expect, not the pick to correct. The report states which model it reads
+    // and cannot open it, so the only thing missing is that one folder.
     const plan = planOpen(map({
       'definition.pbir': pbir('directlake_import_composite.SemanticModel'),
       'definition/pages/p1/visuals/v1/visual.json': '{}',
-    }));
-
-    expect(plan.screen).toBe('problem');
-    expect(plan.message).toMatch(/directlake_import_composite\.SemanticModel/);
-    expect(plan.message).toMatch(/one level up/);
-    expect(plan.message).not.toMatch(/No TMDL files/);
-  });
-
-  it('calls the picked report folder by the name the picker gave it', () => {
-    const plan = planOpen(map({
-      'definition.pbir': pbir('Shop.SemanticModel'),
-      'definition/pages/p1/visuals/v1/visual.json': '{}',
     }), { name: 'contoso_project.Report' });
 
-    expect(plan.message).toMatch(/^contoso_project\.Report is a report folder/);
+    expect(plan.screen).toBe('model-wanted');
+    expect(plan.report.wanted).toBe('directlake_import_composite.SemanticModel');
+    expect(plan.report.reference).toBe('../directlake_import_composite.SemanticModel');
+    expect(plan.report.name).toBe('contoso_project.Report');
+    // Relativized past `definition`, the way the report parser wants it.
+    expect([...plan.report.files.keys()]).toContain('pages/p1/visuals/v1/visual.json');
+  });
+
+  it('asks for the model when the folder holds exactly one report and no model', () => {
+    const plan = planOpen(map({
+      'contoso_project.Report/definition.pbir': pbir('directlake_import_composite.SemanticModel'),
+      'contoso_project.Report/definition/pages/p1/visuals/v1/visual.json': '{}',
+    }));
+
+    expect(plan.screen).toBe('model-wanted');
+    expect(plan.report.wanted).toBe('directlake_import_composite.SemanticModel');
+    expect(plan.report.name).toBe('contoso_project.Report');
   });
 
   it('says so when the picked report folder reads a published model', () => {
@@ -325,6 +329,38 @@ describe('planOpen', () => {
     expect(plan.message).toMatch(/^contoso_project\.Report is a report folder/);
   });
 
+  it('joins a separately-picked report and model into one partition', () => {
+    // Two pickers, each relativized to its own folder — exactly the shape one pick would
+    // have produced, so nothing downstream learns how many dialogs it took.
+    const joined = joinReportToModel({
+      reportFiles: map({
+        'definition.pbir': pbir('Shop.SemanticModel'),
+        'definition/pages/p1/visuals/v1/visual.json': '{}',
+      }),
+      reportName: 'Shop.Report',
+      modelFiles: map({ 'definition/tables/Sales.tmdl': TABLE }),
+      modelName: 'Shop.SemanticModel',
+    });
+
+    expect(joined).toMatchObject({
+      modelName: 'Shop', reportName: 'Shop', modelKey: 'Shop', reportKey: 'Shop',
+    });
+    expect([...joined.modelFiles.keys()]).toEqual(['tables/Sales.tmdl']);
+    expect([...joined.reportFiles.keys()]).toContain('pages/p1/visuals/v1/visual.json');
+  });
+
+  it('joins a model picked with no report at all', () => {
+    const joined = joinReportToModel({
+      reportFiles: null,
+      reportName: null,
+      modelFiles: map({ 'definition/tables/Sales.tmdl': TABLE }),
+      modelName: 'Shop.SemanticModel',
+    });
+
+    expect(joined.reportFiles).toBeNull();
+    expect(joined.modelName).toBe('Shop');
+  });
+
   it('says so when the report reads a published model rather than one on disk', () => {
     const plan = planOpen(map({
       'Live.Report/definition.pbir': JSON.stringify({
@@ -334,7 +370,7 @@ describe('planOpen', () => {
     }));
 
     expect(plan.screen).toBe('problem');
-    expect(plan.message).toMatch(/published model/);
+    expect(plan.message).toMatch(/published semantic model/);
   });
 
   it('falls back to the generic message for a folder that is neither', () => {

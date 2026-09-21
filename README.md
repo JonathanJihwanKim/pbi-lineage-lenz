@@ -48,18 +48,7 @@ contoso_project/                           ← the repository — pick this
 
 Then pick the report you came for:
 
-```text
-Which report?
-  contoso_project holds 2 semantic models and 2 reports.
-
-  SEMANTIC MODEL  contoso_import
-    contoso_import                         0 visuals
-    Open the model on its own              no report
-
-  SEMANTIC MODEL  directlake_import_composite
-    contoso_project                        4 visuals
-    Open the model on its own              no report
-```
+![Which report? Each report listed under the semantic model its definition.pbir names](docs/images/choose-report.png)
 
 **You are never asked which model belongs to which report.** Each report names its own in
 `definition.pbir`, and that is the only reliable link: above, `contoso_project` reads

@@ -56,6 +56,24 @@ describe('partitionEstate', () => {
     expect(estate.models[0].reports).toEqual(['team/Good']);
   });
 
+  it('keeps the reference a report names, not only a sentence about it', () => {
+    // A caller explaining a bad pick has to name the model that was asked for, which
+    // means the raw value has to survive being turned into prose.
+    const estate = partitionEstate(new Map(Object.entries({
+      'team/Shared.SemanticModel/definition/tables/Sales.tmdl': TABLE,
+      'team/Good.Report/definition.pbir': pbir('../Shared.SemanticModel'),
+      'team/Elsewhere.Report/definition.pbir': pbir('../../other/Remote.SemanticModel'),
+      'team/Live.Report/definition.pbir': JSON.stringify({ datasetReference: { byConnection: { connectionString: 'x' } } }),
+      'team/Silent.Report/definition/pages/p1/page.json': '{}',
+    })));
+
+    const byKey = Object.fromEntries(estate.reports.map((r) => [r.key, r]));
+    expect(byKey['team/Good'].reference).toBe('../Shared.SemanticModel');
+    expect(byKey['team/Elsewhere'].reference).toBe('../../other/Remote.SemanticModel');
+    expect(byKey['team/Live'].reference).toBeNull();
+    expect(byKey['team/Silent'].reference).toBeNull();
+  });
+
   it('keys on the folder path, so two reports with one name in different folders stay apart', () => {
     expect(keyOf('finance/Sales.Report')).toBe('finance/Sales');
     expect(keyOf('ops/Sales.Report')).toBe('ops/Sales');

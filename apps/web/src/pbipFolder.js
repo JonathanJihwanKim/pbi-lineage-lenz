@@ -9,5 +9,5 @@
  */
 
 export {
-  partitionPbip, describeProblem, describeChoice, shouldRead, normalizePath,
+  partitionPbip, planOpen, keyOf, describeProblem, shouldRead, normalizePath,
 } from '@pbi-lineage-lenz/core';

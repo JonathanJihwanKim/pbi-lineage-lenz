@@ -25,6 +25,32 @@ Free and open source. No paid tier, no login, no server.
 
 ---
 
+## Open your own model — 1 minute
+
+**[Open the web app →](https://jonathanjihwankim.github.io/pbi-lineage-lenz/)** and click
+**Open a PBIP project folder**. Pick the folder that *holds* your `.Report` and
+`.SemanticModel` folders — not one of them:
+
+```text
+my_workspace/                              ← pick this folder
+├─ contoso_project.Report/
+│  └─ definition.pbir                      ← names the model it reads
+├─ contoso_sales_thin.Report/
+└─ directlake_import_composite.SemanticModel/
+```
+
+A browser can only read the folder you pick, and a report's model is its *sibling* — so
+pointing at `contoso_project.Report` leaves the model out of reach. **If the folder holds
+several reports, the app asks which one**, listing each under the model its
+`definition.pbir` names. That pairing is the only reliable one: above, `contoso_project`
+reads `directlake_import_composite`, a name it shares nothing with.
+
+A `.SemanticModel` folder on its own also works — you get the model lenses without the
+report. Nothing is uploaded: the folder is read, parsed and rendered in the page, and there
+is no server to send it to.
+
+---
+
 ## The problem
 
 A data engineer knows `Lakehouse_Contoso.dbo.customer.CustomerKey`.
@@ -261,10 +287,13 @@ This is also exactly what a handoff file looks like when somebody sends you one.
 ### 2. Open your own model — 1 minute
 
 **[Open the web app →](https://jonathanjihwankim.github.io/pbi-lineage-lenz/)** and click
-**Open a PBIP folder**.
+**Open a PBIP project folder**.
 
-- **Which folder?** The one holding your `.SemanticModel` and `.Report` folders — where
-  your `.pbip` file sits. The `.SemanticModel` folder on its own also works.
+- **Which folder?** [The one that holds your `.Report` and `.SemanticModel`
+  folders](#open-your-own-model--1-minute) — not one of them.
+- **Several reports in it?** The app asks which one, listing each under the model its
+  `definition.pbir` names. **Switch report** in the header moves between them without
+  picking the folder again.
 - **Is anything uploaded?** No. The folder is read in the page, parsed in the page, and
   rendered in the page. There is no server to send it to.
 - **Which browsers?** Chrome and Edge get a proper folder picker. Firefox and Safari work

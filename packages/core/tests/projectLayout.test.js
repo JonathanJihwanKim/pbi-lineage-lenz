@@ -8,7 +8,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { partitionPbip, shouldRead, normalizePath, describeProblem } from '../src/parser/projectLayout.js';
+import {
+  partitionPbip, shouldRead, normalizePath, describeProblem, planOpen,
+} from '../src/parser/projectLayout.js';
 
 const TABLE = 'table Sales\n\tcolumn Amount\n';
 
@@ -210,5 +212,134 @@ describe('normalizePath', () => {
   it('produces forward slashes with no leading dot-slash', () => {
     expect(normalizePath('.\\a\\b.tmdl')).toBe('a/b.tmdl');
     expect(normalizePath('/a/b.tmdl')).toBe('a/b.tmdl');
+  });
+});
+
+/**
+ * Which screen a pick earns.
+ *
+ * The regression that matters most here is the quiet one: a folder that opens straight to
+ * a viewer today must keep doing so. Diverting an unambiguous project to a chooser would
+ * add a click to the common case to solve a problem it does not have.
+ */
+describe('planOpen', () => {
+  const pbir = (modelFolder) => JSON.stringify({
+    version: '4.0',
+    datasetReference: { byPath: { path: `../${modelFolder}` } },
+  });
+
+  it('asks which report, when the folder holds more than one', () => {
+    const plan = planOpen(map({
+      'contoso_import.SemanticModel/definition/tables/Sales.tmdl': TABLE,
+      'contoso_import.Report/definition.pbir': pbir('contoso_import.SemanticModel'),
+      'contoso_import.Report/definition/pages/p1/page.json': '{}',
+      'directlake_import_composite.SemanticModel/definition/tables/Orders.tmdl': TABLE,
+      'contoso_project.Report/definition.pbir': pbir('directlake_import_composite.SemanticModel'),
+      'contoso_project.Report/definition/pages/p1/visuals/v1/visual.json': '{}',
+    }));
+
+    expect(plan.screen).toBe('chooser');
+    expect(plan.estate.reports.map((report) => report.key).sort())
+      .toEqual(['contoso_import', 'contoso_project']);
+  });
+
+  it('asks which model, when there are two of them and one report', () => {
+    // Two models is ambiguous even with a single report: the report names one of them,
+    // and the other is a model somebody may well have opened the folder to read.
+    const plan = planOpen(map({
+      'A.SemanticModel/definition/tables/Sales.tmdl': TABLE,
+      'B.SemanticModel/definition/tables/Orders.tmdl': TABLE,
+      'A.Report/definition.pbir': pbir('A.SemanticModel'),
+      'A.Report/definition/pages/p1/visuals/v1/visual.json': '{}',
+    }));
+
+    expect(plan.screen).toBe('chooser');
+    expect(plan.estate.models.map((model) => model.key)).toEqual(['A', 'B']);
+  });
+
+  it('opens a single project straight away, with nothing to ask', () => {
+    const plan = planOpen(map({
+      'Shop.SemanticModel/definition/tables/Sales.tmdl': TABLE,
+      'Shop.Report/definition/pages/p1/visuals/v1/visual.json': '{}',
+    }));
+
+    expect(plan.screen).toBe('viewer');
+    expect(plan.partition).toMatchObject({ modelName: 'Shop', reportName: 'Shop' });
+  });
+
+  it('opens a lone .SemanticModel folder straight away', () => {
+    const plan = planOpen(map({ 'Shop.SemanticModel/definition/tables/Sales.tmdl': TABLE }));
+    expect(plan.screen).toBe('viewer');
+    expect(plan.partition.layout).toBe('semantic-model');
+  });
+
+  it('opens a bare definition folder straight away', () => {
+    const plan = planOpen(map({ 'tables/Sales.tmdl': TABLE }));
+    expect(plan.screen).toBe('viewer');
+    expect(plan.partition.layout).toBe('definition');
+  });
+
+  it('names the report folder and the model it wanted, rather than "no TMDL files"', () => {
+    // What you get by pointing at the half of the project you were working in. The model
+    // is one level up, which is exactly what the message has to say.
+    const plan = planOpen(map({
+      'definition.pbir': pbir('directlake_import_composite.SemanticModel'),
+      'definition/pages/p1/visuals/v1/visual.json': '{}',
+    }));
+
+    expect(plan.screen).toBe('problem');
+    expect(plan.message).toMatch(/directlake_import_composite\.SemanticModel/);
+    expect(plan.message).toMatch(/one level up/);
+    expect(plan.message).not.toMatch(/No TMDL files/);
+  });
+
+  it('calls the picked report folder by the name the picker gave it', () => {
+    const plan = planOpen(map({
+      'definition.pbir': pbir('Shop.SemanticModel'),
+      'definition/pages/p1/visuals/v1/visual.json': '{}',
+    }), { name: 'contoso_project.Report' });
+
+    expect(plan.message).toMatch(/^contoso_project\.Report is a report folder/);
+  });
+
+  it('says so when the picked report folder reads a published model', () => {
+    const plan = planOpen(map({
+      'definition.pbir': JSON.stringify({
+        datasetReference: { byConnection: { connectionString: 'x' } },
+      }),
+      'definition/pages/p1/visuals/v1/visual.json': '{}',
+    }));
+
+    expect(plan.screen).toBe('problem');
+    expect(plan.message).toMatch(/published semantic model/);
+  });
+
+  it('names the report folder when it was picked from a workspace with no model', () => {
+    const plan = planOpen(map({
+      'contoso_project.Report/definition.pbir': pbir('directlake_import_composite.SemanticModel'),
+      'contoso_project.Report/definition/pages/p1/visuals/v1/visual.json': '{}',
+      'contoso_sales_thin.Report/definition.pbir': pbir('directlake_import_composite.SemanticModel'),
+    }));
+
+    expect(plan.screen).toBe('problem');
+    expect(plan.message).toMatch(/^contoso_project\.Report is a report folder/);
+  });
+
+  it('says so when the report reads a published model rather than one on disk', () => {
+    const plan = planOpen(map({
+      'Live.Report/definition.pbir': JSON.stringify({
+        datasetReference: { byConnection: { connectionString: 'x' } },
+      }),
+      'Live.Report/definition/pages/p1/visuals/v1/visual.json': '{}',
+    }));
+
+    expect(plan.screen).toBe('problem');
+    expect(plan.message).toMatch(/published model/);
+  });
+
+  it('falls back to the generic message for a folder that is neither', () => {
+    const plan = planOpen(map({ 'readme.json': '{}' }));
+    expect(plan.screen).toBe('problem');
+    expect(plan.message).toMatch(/No TMDL files here/);
   });
 });

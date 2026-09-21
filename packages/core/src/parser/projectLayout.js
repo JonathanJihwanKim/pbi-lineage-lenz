@@ -232,7 +232,7 @@ export function keyOf(root) {
  * @returns {{
  *   models: Array<{key: string, name: string, root: string, files: Map, reports: string[]}>,
  *   reports: Array<{key: string, name: string, root: string, files: Map, modelKey: string|null,
- *     visualCount: number, problem: string|null}>
+ *     reference: string|null, visualCount: number, problem: string|null}>
  * }}
  */
 export function partitionEstate(files) {
@@ -264,10 +264,13 @@ export function partitionEstate(files) {
 
     let modelRoot = null;
     let problem = null;
+    // The raw `../X.SemanticModel` the report names, kept rather than folded into `problem`:
+    // a caller explaining what went wrong needs the value, not a sentence about it.
+    let reference = null;
     if (pbir === undefined) {
       problem = 'No definition.pbir, so the model this report reads is not stated.';
     } else {
-      const reference = parseSemanticModelReference(pbir);
+      reference = parseSemanticModelReference(pbir);
       if (!reference) {
         problem = /byConnection/i.test(pbir)
           ? 'Connects to a published semantic model (byConnection), which is not in this folder.'
@@ -287,6 +290,7 @@ export function partitionEstate(files) {
       root,
       files: definitionOf(normalized, root),
       modelKey: modelRoot !== null ? keyOf(modelRoot) : null,
+      reference,
       visualCount,
       problem,
     };
@@ -331,4 +335,119 @@ export function describeProblem(partition) {
       + 'the one next to your .pbip file.';
   }
   return null;
+}
+
+/**
+ * Why a folder holding reports and no model is not enough, naming what was picked.
+ *
+ * A report folder is the one a Power BI developer is most likely to point at, because it
+ * is the half they were working in and the only half that states the pairing. But the
+ * model it reads is its *sibling*, and a browser folder picker hands over the picked
+ * subtree and nothing above it — so the files simply are not there to parse.
+ *
+ * "No TMDL files here" is true and useless. Naming the folder they picked, the model it
+ * asked for, and the one move that fixes it costs three lines and saves the guess.
+ *
+ * @param {object} estate - partitionEstate() output.
+ * @returns {string|null} null when there is nothing to explain.
+ */
+export function describeReportOnly(estate) {
+  const reports = estate?.reports ?? [];
+  if (reports.length === 0 || (estate?.models ?? []).length > 0) return null;
+
+  // The biggest report is the one they most plausibly meant, and the only one worth
+  // naming: a list of four folders is a worse answer than one example of the shape.
+  const [first] = [...reports].sort((a, b) => b.visualCount - a.visualCount);
+
+  if (reports.every((report) => report.reference === null)) {
+    return `${first.name}.Report names no semantic model in this folder — it reads a published `
+      + 'model, or its definition.pbir is missing. There is nothing here to trace a column back to. '
+      + 'Point at a folder that holds a .SemanticModel folder.';
+  }
+
+  const wanted = first.reference
+    ? first.reference.split('/').filter((part) => part && part !== '..').pop()
+    : null;
+
+  return `${first.name}.Report is a report folder. The semantic model it reads`
+    + `${wanted ? ` — ${wanted} — ` : ' '}`
+    + 'sits beside it, not inside it, and a browser can only read the folder you pick. '
+    + 'Pick the folder one level up: the one that holds both.';
+}
+
+/**
+ * The picked folder is itself a `.Report` folder.
+ *
+ * Both pickers hand over paths relative to what was picked, with the folder's own name
+ * stripped — so pointing at `contoso_project.Report` arrives as `definition.pbir` and
+ * `definition/pages/...`, with no `.Report` segment anywhere for a suffix scan to find.
+ * This is the single most likely wrong pick there is, and without this check it lands on
+ * the generic "no TMDL files" message, which describes none of it.
+ *
+ * @param {Map<string, string>} files - Already normalized.
+ * @param {string|null} name - What the picker called the folder, when it said.
+ * @returns {string|null} null when the picked folder is not a report.
+ */
+function describeRootReport(files, name) {
+  const pbir = files.get('definition.pbir');
+  if (pbir === undefined) return null;
+
+  const folder = name ? `${name}` : 'This folder';
+  const reference = parseSemanticModelReference(pbir);
+
+  if (!reference) {
+    return /byConnection/i.test(pbir)
+      ? `${folder} is a report folder, and it reads a published semantic model rather than one `
+        + 'on disk — so there is no model here to trace a column back to. Point at a folder that '
+        + 'holds a .SemanticModel folder.'
+      : `${folder} is a report folder, and its definition.pbir names no semantic model. `
+        + 'Point at the folder that holds your .SemanticModel folder.';
+  }
+
+  const wanted = reference.split('/').filter((part) => part && part !== '..').pop();
+  return `${folder} is a report folder. The semantic model it reads — ${wanted} — sits beside it, `
+    + 'not inside it, and a browser can only read the folder you pick. '
+    + 'Pick the folder one level up: the one that holds both.';
+}
+
+/**
+ * Which screen a picked folder earns.
+ *
+ * One folder pick has three honest outcomes, and the caller should not have to work out
+ * which by inspecting two different partitions. A workspace with several reports is a
+ * question, not a default — choosing one silently and mentioning the rest in a footnote
+ * puts numbers on screen that belong to a report the reader may not have had in mind.
+ *
+ * Only genuinely ambiguous folders divert: one model with one report, a lone
+ * `.SemanticModel`, and a bare `definition` folder all keep the path they have always
+ * taken through partitionPbip().
+ *
+ * @param {Map<string, string>} files - Path (any separator) to contents.
+ * @param {object} [options]
+ * @param {string} [options.name] - What the picker called the folder, used to name it back.
+ * @returns {{screen: 'viewer', partition: object}
+ *   | {screen: 'chooser', estate: object}
+ *   | {screen: 'problem', message: string}}
+ */
+export function planOpen(files, { name = null } = {}) {
+  const normalized = new Map();
+  for (const [path, content] of files) normalized.set(normalizePath(path), content);
+
+  const estate = partitionEstate(normalized);
+
+  if (estate.models.length === 0) {
+    const rootReport = describeRootReport(normalized, name);
+    if (rootReport) return { screen: 'problem', message: rootReport };
+    if (estate.reports.length > 0) {
+      return { screen: 'problem', message: describeReportOnly(estate) };
+    }
+  }
+
+  if (estate.models.length >= 1 && (estate.reports.length >= 2 || estate.models.length >= 2)) {
+    return { screen: 'chooser', estate };
+  }
+
+  const partition = partitionPbip(files);
+  const message = describeProblem(partition);
+  return message ? { screen: 'problem', message } : { screen: 'viewer', partition };
 }

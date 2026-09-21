@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased — which folder, and which report
+
+"Open a PBIP folder" never said which folder, and a Fabric workspace synced to git holds
+several of each. The pick that looks most sensible — the `.Report` folder you were editing,
+the only half that states which model it reads — was the one that could not work: a browser
+hands over the folder you picked and nothing above it, so the model, which is that folder's
+*sibling*, is out of reach. It failed with "No TMDL files here", which describes none of
+that.
+
+So the pick stays at the folder that holds both, and the choice moves inside the app, where
+`definition.pbir` has already been read.
+
+- **The app asks which report** when the folder holds more than one, listing each under the
+  model its `definition.pbir` names — not the one it sorts next to. Reports whose model is
+  not in the folder are listed with the reason rather than dropped. Replaces a note that
+  chose silently and told browser users to pass `--all`, a flag that exists only in the
+  command line.
+- **Switch report** moves between reports over a shared model without picking the folder
+  again, and parses that model once however many times you switch.
+- **A wrong folder says what it was.** Pointing at a `.Report` folder now names it, names
+  the model it asked for, and says to pick one level up. Pointing at a report that reads a
+  published model says that instead.
+- **The landing page shows the folder shape it wants**, which answers "which folder?" faster
+  than a sentence about it. The README answers it above the fold, where the instructions
+  were previously 250 lines down.
+- **Unambiguous folders are untouched**: one model with one report, a lone `.SemanticModel`,
+  and a bare `definition` folder open straight to the viewer exactly as before. No change to
+  the CLI, the handoff file, or the release.
+
 ## 2.0.1 — install it from here
 
 No change to what the tool does. It changes where it comes from.

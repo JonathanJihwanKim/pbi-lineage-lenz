@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — one folder to open, and it says what is in it
+## 2.1.0 — one folder to open, and it says what is in it
 
 "Open a PBIP folder" never said which folder. A Fabric workspace synced to git holds several
 `.Report` and several `.SemanticModel` folders side by side, and the label named none of
@@ -36,8 +36,13 @@ belongs to which report.
   It now uses the browser's own `cancel` event where that exists.
 
 `partitionEstate()` keeps each report's raw reference rather than folding it into prose,
-because a caller asking for a folder by name needs the name. No change to the CLI, the
-handoff file, or the release.
+because a caller asking for a folder by name needs the name. No change to the CLI or the
+handoff file.
+
+**The README screenshots are retaken from the app**, including two new ones for the part
+every reader meets first — the landing page and the report chooser — and one that had
+disagreed with its own caption since it was taken. `scripts/shoot-screenshots.md` records
+how, because they go stale silently.
 
 ## 2.0.1 — install it from here
 

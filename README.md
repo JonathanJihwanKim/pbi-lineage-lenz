@@ -27,18 +27,11 @@ Free and open source. No paid tier, no login, no server.
 
 ## Open your own model — 1 minute
 
-**[Open the web app →](https://jonathanjihwankim.github.io/pbi-lineage-lenz/)**, click
-**Open a repository folder**, and pick the folder your Power BI items sit in — the
-repository itself, not one of the folders inside it:
+**[Open the web app →](https://jonathanjihwankim.github.io/pbi-lineage-lenz/)** and click
+**Open a repository folder** — the folder your Power BI items sit in, not one of the
+folders inside it:
 
-```text
-contoso_project/                           ← the repository — pick this
-├─ contoso_project.Report/
-│  └─ definition.pbir                      names the model it reads
-├─ contoso_import.Report/
-├─ directlake_import_composite.SemanticModel/
-└─ contoso_import.SemanticModel/
-```
+![The web app: one button, and the folder shape it expects](docs/images/open-repository.png)
 
 > **Chrome and Edge ask twice.** After you choose the folder, a small bubble appears near
 > the address bar: *"Let site view files?"*. Click **View files**. Dismissing it or pressing
@@ -312,8 +305,10 @@ This is also exactly what a handoff file looks like when somebody sends you one.
   address bar. Dismissing it cancels the pick.
 - **Is anything uploaded?** No. The folder is read in the page, parsed in the page, and
   rendered in the page. There is no server to send it to.
-- **Which browsers?** Chrome and Edge get a proper folder picker. Firefox and Safari work
-  through a file picker; the only thing they lose is choosing where an export saves.
+- **Which browsers?** Chrome and Edge get a proper folder picker; Firefox and Safari read
+  the folder through a plain file picker instead. Where the folder picker is blocked — by
+  policy, or by a site setting — the app falls back to the file picker on its own. The only
+  thing that route loses is choosing where an export saves.
 
 ### 3. Hand it to a data engineer — 1 minute
 

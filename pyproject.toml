@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "model-lenz"
-version = "0.5.1"
-description = "DEPRECATED — replaced by PBI Lineage Lenz. Use `npx pbi-lineage-lenz` instead. Pin model-lenz==0.4.0 for the last working release."
+version = "0.5.2"
+description = "DEPRECATED — replaced by PBI Lineage Lenz. Install it from its GitHub release instead. Pin model-lenz==0.4.0 for the last working release."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }

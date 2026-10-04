@@ -3,20 +3,21 @@
 **It has been replaced by [PBI Lineage Lenz](https://github.com/JonathanJihwanKim/pbi-lineage-lenz).**
 
 ```bash
-npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
+npm i -g https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/latest/download/pbi-lineage-lenz.tgz
+pbi-lineage-lenz handoff ./MyReport -o handoff.html
 ```
 
-No Python, no virtualenv, no install. Or open a model in your browser with nothing
-installed at all: **https://jonathanjihwankim.github.io/pbi-lineage-lenz/**
+No Python and no virtualenv — Node and one install line. Or open a model in your browser
+with nothing installed at all: **https://jonathanjihwankim.github.io/pbi-lineage-lenz/**
 
 ## What moved
 
 | model-lenz | PBI Lineage Lenz |
 |---|---|
 | `model-lenz serve` | the [web app](https://jonathanjihwankim.github.io/pbi-lineage-lenz/), or a handoff file you can send to someone |
-| `model-lenz check` | `npx pbi-lineage-lenz check` |
-| `model-lenz summary` | `npx pbi-lineage-lenz docs --format md` |
-| `model-lenz export` | `npx pbi-lineage-lenz docs --format md\|json\|html` |
+| `model-lenz check` | `pbi-lineage-lenz check` |
+| `model-lenz summary` | `pbi-lineage-lenz docs --format md` |
+| `model-lenz export` | `pbi-lineage-lenz docs --format md\|json\|html` |
 
 Everything model-lenz did is there, plus a model lens that reads table roles from the
 direction of relationships, field parameters followed into the model, Direct Lake support,
@@ -45,7 +46,11 @@ pip install model-lenz==0.4.0
 Its source is the [`python-model-lenz`](https://github.com/JonathanJihwanKim/pbi-lineage-lenz/tree/python-model-lenz)
 branch, tagged [`v0.4.0`](https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/tag/v0.4.0).
 
-This release — 0.5.1 — does nothing but print that message and exit non-zero. Non-zero on
+Earlier notices (0.5.0, 0.5.1) said `npx pbi-lineage-lenz`. That now reaches an old 1.x copy
+on npm; PBI Lineage Lenz is released on GitHub, and the install line above always gets the
+latest.
+
+This release — 0.5.2 — does nothing but print that message and exit non-zero. Non-zero on
 purpose: `model-lenz check` was a build gate, and a deprecated version that printed a notice
 and exited 0 would leave a gate that always passes standing where a real check used to be.
 

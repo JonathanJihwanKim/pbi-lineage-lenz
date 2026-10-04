@@ -14,9 +14,10 @@ NOTICE = """
   model-lenz is no longer maintained.
 
   It has been replaced by PBI Lineage Lenz, which does everything this did and
-  more — and needs no Python, no virtualenv, and no install:
+  more — and needs no Python and no virtualenv, just Node and one install line:
 
-      npx pbi-lineage-lenz handoff ./MyReport -o handoff.html
+      npm i -g https://github.com/JonathanJihwanKim/pbi-lineage-lenz/releases/latest/download/pbi-lineage-lenz.tgz
+      pbi-lineage-lenz handoff ./MyReport -o handoff.html
 
   Or open a model in your browser with nothing installed at all:
 
@@ -24,10 +25,10 @@ NOTICE = """
 
   What moved:
 
-      model-lenz serve     ->  the web app, or `npx pbi-lineage-lenz handoff`
-      model-lenz check     ->  npx pbi-lineage-lenz check
-      model-lenz summary   ->  npx pbi-lineage-lenz docs --format md
-      model-lenz export    ->  npx pbi-lineage-lenz docs --format md|json|html
+      model-lenz serve     ->  the web app, or `pbi-lineage-lenz handoff`
+      model-lenz check     ->  pbi-lineage-lenz check
+      model-lenz summary   ->  pbi-lineage-lenz docs --format md
+      model-lenz export    ->  pbi-lineage-lenz docs --format md|json|html
 
   Why: three tools of mine overlapped, and keeping a Python engine and a
   JavaScript one in step meant every parser fix had to be made twice. The

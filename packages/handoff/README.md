@@ -9,8 +9,12 @@ air-gapped machine, and that constraint is asserted in the test suite rather tha
 intended.
 
 ```bash
-npm install @pbi-lineage-lenz/handoff
+git clone https://github.com/JonathanJihwanKim/pbi-lineage-lenz
+cd pbi-lineage-lenz && npm install
 ```
+
+The copy on npm stops at 1.x; 2.x is released on GitHub only. In the clone this package is
+`packages/handoff`, and npm workspaces resolve `@pbi-lineage-lenz/handoff` to it.
 
 ```js
 import { buildHandoff } from '@pbi-lineage-lenz/handoff';

@@ -229,7 +229,7 @@ maps do not display. They do in most other markdown renderers.
 ```json
 {
   "version": 1,
-  "generator": "pbi-lineage-lenz 2.0.0",
+  "generator": "pbi-lineage-lenz 2.1.0",
   "findings": {
     "broken-nameof": ["broken-nameof|table:Metric Selection|sales[Retired Measure]"],
     "unused": ["unused|measure:sales[Old KPI]"]

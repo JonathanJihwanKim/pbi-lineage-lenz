@@ -7,8 +7,12 @@ Turns an analyzed model into markdown — including a mermaid ER diagram GitHub 
 inline — or into JSON for whatever you want to build on top.
 
 ```bash
-npm install @pbi-lineage-lenz/export
+git clone https://github.com/JonathanJihwanKim/pbi-lineage-lenz
+cd pbi-lineage-lenz && npm install
 ```
+
+The copy on npm stops at 1.x; 2.x is released on GitHub only. In the clone this package is
+`packages/export`, and npm workspaces resolve `@pbi-lineage-lenz/export` to it.
 
 ```js
 import { toMarkdown, toJson } from '@pbi-lineage-lenz/export';

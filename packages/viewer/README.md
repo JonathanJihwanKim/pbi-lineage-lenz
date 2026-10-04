@@ -4,11 +4,15 @@ The browser UI behind [PBI Lineage Lenz](https://github.com/JonathanJihwanKim/pb
 
 Renders an analyzed model as five lenses — overview, model shape, source map, measures and
 pages — from the plain data
-[`@pbi-lineage-lenz/core`](https://www.npmjs.com/package/@pbi-lineage-lenz/core) produces.
+[`@pbi-lineage-lenz/core`](../core) produces.
 
 ```bash
-npm install @pbi-lineage-lenz/viewer
+git clone https://github.com/JonathanJihwanKim/pbi-lineage-lenz
+cd pbi-lineage-lenz && npm install
 ```
+
+The copy on npm stops at 1.x; 2.x is released on GitHub only. In the clone this package is
+`packages/viewer`, and npm workspaces resolve `@pbi-lineage-lenz/viewer` to it.
 
 ```js
 import { mountViewer } from '@pbi-lineage-lenz/viewer';

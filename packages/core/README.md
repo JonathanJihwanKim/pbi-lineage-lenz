@@ -9,8 +9,12 @@ Platform-independent: no DOM, no file system, no network. Give it a `Map` of fil
 contents and it returns plain data. Runs in Node.js, browsers, and VS Code alike.
 
 ```bash
-npm install @pbi-lineage-lenz/core
+git clone https://github.com/JonathanJihwanKim/pbi-lineage-lenz
+cd pbi-lineage-lenz && npm install
 ```
+
+The copy on npm stops at 1.x; 2.x is released on GitHub only. In the clone this package is
+`packages/core`, and npm workspaces resolve `@pbi-lineage-lenz/core` to it.
 
 ## Usage
 
